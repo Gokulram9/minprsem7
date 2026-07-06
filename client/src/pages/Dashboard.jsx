@@ -41,6 +41,13 @@ const Dashboard = () => {
 
   return (
     <div className="app-layout">
+      {/* Mobile backdrop overlay */}
+      {!sidebarCollapsed && (
+        <div 
+          className="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-xs md:hidden"
+          onClick={() => setSidebarCollapsed(true)}
+        />
+      )}
       {/* ── STICKY SIDEBAR ── */}
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
 

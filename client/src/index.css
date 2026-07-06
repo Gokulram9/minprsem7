@@ -3599,4 +3599,20 @@ body::before {
   100% { background-position: -200% center; }
 }
 
+/* ── RESPONSIVE DASHBOARD LAYOUT ADAPTATIONS ── */
+@media (max-width: 768px) {
+  .main-content {
+    padding: 1rem !important;
+  }
+  
+  /* Make the sidebar a fixed floating drawer on mobile */
+  aside {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    height: 100vh !important;
+    z-index: 50 !important;
+  }
+}
+
 
