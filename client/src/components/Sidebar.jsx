@@ -26,7 +26,7 @@ const Sidebar = ({ collapsed, onToggle }) => {
     { to: '/dashboard/scheduling',  label: 'Hearings',     icon: Calendar,     group: 'management' },
     { to: '/dashboard/applications',label: 'Legal Aid',    icon: ShieldAlert,  group: 'management' },
     { to: '/dashboard/judgments',   label: 'Precedents',   icon: Scale,        group: 'intelligence' },
-    { to: '/dashboard/ai-recommend',label: 'AI Assistant', icon: Sparkles,     group: 'intelligence', aiTag: true },
+    { to: '/dashboard/ai-recommend',label: 'Smart Matcher', icon: Sparkles,     group: 'intelligence' },
     { to: '/dashboard/analytics',   label: 'Reports',      icon: BarChart2,    group: 'intelligence' },
     { to: '/dashboard/profile',     label: 'Settings',     icon: Settings,     group: 'account' },
   ];
@@ -36,7 +36,7 @@ const Sidebar = ({ collapsed, onToggle }) => {
     { to: '/dashboard/applications',label: 'Applications', icon: ShieldAlert,   group: 'workspace' },
     { to: '/dashboard/cases',       label: 'My Cases',     icon: Scale,         group: 'workspace' },
     { to: '/dashboard/judgments',   label: 'Precedents',   icon: Scale,         group: 'workspace' },
-    { to: '/dashboard/ai-recommend',label: 'AI Lawyer',    icon: Sparkles,      group: 'workspace', aiTag: true },
+    { to: '/dashboard/ai-recommend',label: 'Counsel Matcher', icon: Sparkles,      group: 'workspace' },
     { to: '/dashboard/schedule',    label: 'Schedule',     icon: Calendar,      group: 'workspace' },
     { to: '/dashboard/documents',   label: 'Documents',    icon: FolderOpen,    group: 'workspace' },
     { to: '/dashboard/messages',    label: 'Messages',     icon: MessageSquare, group: 'workspace' },

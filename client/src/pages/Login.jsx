@@ -147,15 +147,15 @@ const Login = () => {
   useEffect(() => {
     if (!showSplash) return;
     if (progress < 20) {
-      setStatusText('Establishing secure SSL handshake...');
+      setStatusText('Connecting to secure database...');
     } else if (progress < 40) {
-      setStatusText('Verifying role signature database...');
+      setStatusText('Verifying session credentials...');
     } else if (progress < 60) {
-      setStatusText('Decrypting user credentials vault...');
+      setStatusText('Loading user profile settings...');
     } else if (progress < 80) {
-      setStatusText('Allocating isolated workspace sandbox...');
+      setStatusText('Synchronizing calendar hearings...');
     } else if (progress < 95) {
-      setStatusText('Starting session portal environment...');
+      setStatusText('Opening system control panel...');
     } else {
       setStatusText('Workspace Ready.');
     }
