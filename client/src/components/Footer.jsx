@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import { Mail, Shield, Check, Github, Twitter, Linkedin } from 'lucide-react';
 import { useState } from 'react';
+import Logo from './Logo';
+
 
 const Footer = () => {
   const [email, setEmail] = useState('');
@@ -29,11 +31,21 @@ const Footer = () => {
           {/* Logo & Intro */}
           <div className="space-y-5">
             <Link to="/" className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#0f2044] via-blue-700 to-[#1e3a5f] text-white font-space font-bold shadow-md text-lg">
-                ⚓
+              <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1F2839] to-[#0D1526] text-[#B69D74] shadow-md shrink-0">
+                <Logo className="h-6 w-6" />
               </div>
               <div className="flex flex-col">
-                <span className="font-space text-base font-bold tracking-tight text-slate-900 dark:text-white">Seven Seas</span>
+                <span
+                  className="font-space text-base font-bold tracking-tight"
+                  style={{
+                    background: 'linear-gradient(90deg, #B69D74 0%, #E6D5B8 50%, #9A7E55 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                  }}
+                >
+                  Seven Seas
+                </span>
                 <span className="text-[10px] uppercase tracking-widest text-slate-500">Justice System</span>
               </div>
             </Link>

@@ -333,7 +333,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
           <div className="inline-flex items-center gap-1.5 rounded-md bg-[#2563eb]/10 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-[#2563eb]">
             ⚡ ONLINE USER ACCESS
           </div>
-          <h2 className="text-2xl font-extrabold text-slate-800 dark:text-white mt-1" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+          <h2 className="text-2xl font-extrabold text-slate-800 dark:text-white mt-1" style={{ fontFamily: 'var(--font-display)' }}>
             Welcome Back, User {userName} - Personal Legal Access Hub
           </h2>
           <p className="text-sm font-semibold tracking-wide text-slate-500 dark:text-slate-400 mt-2.5 max-w-2xl italic leading-relaxed" style={{ fontFamily: "'Playfair Display', serif", color: 'var(--blue-600)' }}>
@@ -411,7 +411,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-[10px] font-bold text-rose-500 dark:text-rose-450 uppercase tracking-wider">Total Applications</p>
-                  <p className="text-3xl font-extrabold text-slate-800 dark:text-white mt-1.5" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+                  <p className="text-3xl font-extrabold text-slate-800 dark:text-white mt-1.5" style={{ fontFamily: 'var(--font-display)' }}>
                     {applications.length}
                   </p>
                 </div>
@@ -434,7 +434,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-[10px] font-bold text-emerald-500 dark:text-emerald-450 uppercase tracking-wider">Active Cases</p>
-                  <p className="text-3xl font-extrabold text-slate-800 dark:text-white mt-1.5" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+                  <p className="text-3xl font-extrabold text-slate-800 dark:text-white mt-1.5" style={{ fontFamily: 'var(--font-display)' }}>
                     {cases.length}
                   </p>
                 </div>
@@ -457,7 +457,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-[10px] font-bold text-blue-500 dark:text-blue-450 uppercase tracking-wider">Upcoming Hearings</p>
-                  <p className="text-3xl font-extrabold text-slate-800 dark:text-white mt-1.5" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+                  <p className="text-3xl font-extrabold text-slate-800 dark:text-white mt-1.5" style={{ fontFamily: 'var(--font-display)' }}>
                     1
                   </p>
                 </div>
@@ -480,7 +480,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-[10px] font-bold text-purple-500 dark:text-purple-450 uppercase tracking-wider">Pending Documents</p>
-                  <p className="text-3xl font-extrabold text-slate-800 dark:text-white mt-1.5" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+                  <p className="text-3xl font-extrabold text-slate-800 dark:text-white mt-1.5" style={{ fontFamily: 'var(--font-display)' }}>
                     {documents.filter(d => d.status === 'Pending Review').length}
                   </p>
                 </div>
@@ -501,7 +501,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
               
               {/* Application progress SVG chart */}
               <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm">
-                <h3 className="text-sm font-bold text-slate-800 dark:text-white pb-3 border-b border-slate-100 dark:border-slate-800 mb-4" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+                <h3 className="text-sm font-bold text-slate-800 dark:text-white pb-3 border-b border-slate-100 dark:border-slate-800 mb-4" style={{ fontFamily: 'var(--font-display)' }}>
                   Application Progress Distribution Graph
                 </h3>
                 
@@ -543,7 +543,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
 
               {/* Court Allocation Worklist */}
               <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-4">
-                <h3 className="text-sm font-bold text-slate-800 dark:text-white pb-2 border-b border-slate-100 dark:border-slate-800" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+                <h3 className="text-sm font-bold text-slate-800 dark:text-white pb-2 border-b border-slate-100 dark:border-slate-800" style={{ fontFamily: 'var(--font-display)' }}>
                   Court Allocation Worklist
                 </h3>
                 <div className="space-y-3">
@@ -638,7 +638,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'var(--font-display)' }}>
                 Legal Aid Subsidy Applications
               </h3>
               <p className="text-xs text-slate-400">Monitor, withdraw, or submit legal representation requests.</p>
@@ -759,7 +759,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
       {activeTab === 'cases' && (
         <div className="space-y-6">
           <div>
-            <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'var(--font-display)' }}>
               Active Judicial Cases
             </h3>
             <p className="text-xs text-slate-400">View live case tracking, courtroom scheduling details, and documentation.</p>
@@ -827,7 +827,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
         <div className="space-y-6">
           <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-6">
             <div>
-              <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'var(--font-display)' }}>
                 AI-Powered Advocate Recommendation System
               </h3>
               <p className="text-xs text-slate-400">Specify details to match with optimal public defenders and legal aid counsel.</p>
@@ -1030,7 +1030,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
           <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
               <div>
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'var(--font-display)' }}>
                   Judicial Hearings & Calendar Schedule
                 </h3>
                 <p className="text-xs text-slate-400 font-medium">Verify execution of each stage in your legal aid pipeline.</p>
@@ -1135,7 +1135,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
           <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
               <div>
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'var(--font-display)' }}>
                   Secure Documents Vault
                 </h3>
                 <p className="text-xs text-slate-400">Manage, replace, or preview financial eligibility and evidence files.</p>
@@ -1152,54 +1152,58 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
             </div>
 
             {/* Document listings table */}
-            <table className="premium-table">
-              <thead>
-                <tr>
-                  <th>File Name</th>
-                  <th>Category</th>
-                  <th>File Size</th>
-                  <th>Upload Date</th>
-                  <th>Verification status</th>
-                  <th className="text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {documents.map((doc) => (
-                  <tr key={doc.id}>
-                    <td className="font-bold flex items-center gap-2">
-                      <FileText size={14} className="text-slate-400" />
-                      <span>{doc.name}</span>
-                    </td>
-                    <td>{doc.type}</td>
-                    <td>{doc.size}</td>
-                    <td>{doc.date}</td>
-                    <td>
-                      <span className={`badge ${
-                        doc.status === 'Approved' ? 'badge-green' : 'badge-amber'
-                      }`}>
-                        {doc.status}
-                      </span>
-                    </td>
-                    <td className="text-right">
-                      <div className="inline-flex gap-2">
-                        <button
-                          onClick={() => alert(`Document Preview: ${doc.name}`)}
-                          className="p-1 rounded bg-slate-100 hover:bg-slate-250 text-xs text-slate-700"
-                        >
-                          Preview
-                        </button>
-                        <button
-                          onClick={() => setDocuments(documents.filter(d => d.id !== doc.id))}
-                          className="p-1 rounded bg-rose-50 text-rose-600 text-xs hover:bg-rose-100"
-                        >
-                          Replace
-                        </button>
-                      </div>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="premium-table">
+                <thead>
+                  <tr>
+                    <th>File Name</th>
+                    <th>Category</th>
+                    <th>File Size</th>
+                    <th>Upload Date</th>
+                    <th>Verification status</th>
+                    <th className="text-right">Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {documents.map((doc) => (
+                    <tr key={doc.id}>
+                      <td className="font-bold">
+                        <div className="flex items-center gap-2">
+                          <FileText size={14} className="text-slate-400" />
+                          <span>{doc.name}</span>
+                        </div>
+                      </td>
+                      <td>{doc.type}</td>
+                      <td>{doc.size}</td>
+                      <td>{doc.date}</td>
+                      <td>
+                        <span className={`badge ${
+                          doc.status === 'Approved' ? 'badge-green' : 'badge-amber'
+                        }`}>
+                          {doc.status}
+                        </span>
+                      </td>
+                      <td className="text-right">
+                        <div className="inline-flex gap-2">
+                          <button
+                            onClick={() => alert(`Document Preview: ${doc.name}`)}
+                            className="p-1 rounded bg-slate-100 hover:bg-slate-250 text-xs text-slate-700"
+                          >
+                            Preview
+                          </button>
+                          <button
+                            onClick={() => setDocuments(documents.filter(d => d.id !== doc.id))}
+                            className="p-1 rounded bg-rose-50 text-rose-600 text-xs hover:bg-rose-100"
+                          >
+                            Replace
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

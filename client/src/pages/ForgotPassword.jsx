@@ -41,7 +41,7 @@ const ForgotPassword = () => {
               <Mail size={18} />
               Password recovery
             </div>
-            <h1 className="text-3xl font-semibold text-slate-950 dark:text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>Forgot your password?</h1>
+            <h1 className="text-3xl font-semibold text-slate-950 dark:text-white" style={{ fontFamily: 'var(--font-display)' }}>Forgot your password?</h1>
             <p className="text-slate-600 dark:text-slate-300 text-xs">Enter your email and we’ll send a secure link to reset your password.</p>
           </div>
 

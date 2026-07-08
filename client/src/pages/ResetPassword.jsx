@@ -43,7 +43,7 @@ const ResetPassword = () => {
               <Lock size={18} />
               Reset password
             </div>
-            <h1 className="text-3xl font-semibold text-slate-950 dark:text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>Create a secure new password</h1>
+            <h1 className="text-3xl font-semibold text-slate-950 dark:text-white" style={{ fontFamily: 'var(--font-display)' }}>Create a secure new password</h1>
             <p className="text-slate-600 dark:text-slate-300 text-xs">Complete the reset process using the token from your email.</p>
           </div>
 

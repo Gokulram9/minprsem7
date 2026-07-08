@@ -10,6 +10,7 @@ import {
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { AuthContext } from '../contexts/AuthContext';
+import ladyJusticeImg from '../assets/lady-justice.png';
 
 /* ─── Animated Counter Hook ─── */
 const useCounter = (target, duration = 2000, start = false) => {
@@ -255,7 +256,19 @@ const Home = () => {
                 <div className="flex items-center justify-between mb-5 pb-4 border-b border-white/10 dark:border-white/5">
                   <div>
                     <p className="text-[9px] uppercase tracking-[0.2em] text-[var(--text-muted)] font-extrabold">Live Activity Log</p>
-                    <p className="text-lg font-bold mt-0.5 text-white" style={{ fontFamily: 'Space Grotesk,sans-serif' }}>Seven Seas Registry</p>
+                    <p
+                      className="text-lg font-bold mt-0.5"
+                      style={{
+                        fontFamily: 'var(--font-display)',
+                        background: 'linear-gradient(90deg, #B69D74 0%, #E6D5B8 50%, #9A7E55 100%)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        backgroundClip: 'text',
+                        display: 'inline-block'
+                      }}
+                    >
+                      Seven Seas Registry
+                    </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="relative flex h-2.5 w-2.5">
@@ -354,7 +367,7 @@ const Home = () => {
       <section id="about" className="py-24 relative overflow-hidden">
         <div className="about-bg-blob" />
         <div className="mx-auto max-w-7xl px-6">
-          <div className="grid gap-16 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
+          <div className="grid gap-12 lg:grid-cols-[1.1fr_0.8fr_1.1fr] lg:items-center">
             <div className="space-y-6">
               <span className="section-pill section-pill-blue">About Us</span>
               <h2 className="section-headline">
@@ -378,6 +391,26 @@ const Home = () => {
               </Link>
             </div>
 
+            {/* Column 2: Lady Justice Illustration */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="relative rounded-3xl overflow-hidden shadow-2xl border border-slate-200/10 dark:border-white/5 bg-slate-950/20 max-w-xs mx-auto shrink-0 group"
+            >
+              <img 
+                src={ladyJusticeImg} 
+                alt="Lady Justice Illustration" 
+                className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-105" 
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent pointer-events-none" />
+              <div className="absolute bottom-4 left-4 right-4 text-left">
+                <p className="text-[9px] uppercase tracking-[0.2em] font-extrabold text-[#B69D74]">Equitable Representation</p>
+                <p className="text-[11px] font-bold text-white mt-0.5 leading-relaxed">Protecting civil rights & constitutional liberties.</p>
+              </div>
+            </motion.div>
+
             <motion.div 
               initial="hidden"
               whileInView="visible"
@@ -391,7 +424,7 @@ const Home = () => {
                   }
                 }
               }}
-              className="grid gap-4 sm:grid-cols-2"
+              className="grid gap-4"
             >
               {[
                 { title: 'Accessible Legal Aid', desc: 'Secure portal for low-income citizens to submit documentation and verify income levels securely for public legal support.', icon: Shield, color: '#3B82F6' },
@@ -470,7 +503,7 @@ const Home = () => {
                     <div className="feature-preview-icon-large" style={{ background: f.bg, color: f.color }}>
                       <Icon size={40} />
                     </div>
-                    <h3 className="text-2xl font-bold text-[var(--text-primary)] mt-6 mb-3" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>{f.title}</h3>
+                    <h3 className="text-2xl font-bold text-[var(--text-primary)] mt-6 mb-3" style={{ fontFamily: 'var(--font-display)' }}>{f.title}</h3>
                     <p className="text-[14px] text-[var(--text-secondary)] leading-relaxed max-w-sm">{f.desc}</p>
                     <div className="feature-preview-bar" style={{ background: `linear-gradient(90deg, ${f.color}, transparent)` }} />
                   </div>
@@ -730,7 +763,7 @@ const Home = () => {
             <Scale size={13} className="text-[#B69D74]" />
             <span className="text-[10px] font-extrabold uppercase tracking-[0.25em] text-[#B69D74]">Seven Seas Justice Portal</span>
           </span>
-          <h2 className="text-4xl lg:text-5xl font-extrabold text-white leading-tight" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+          <h2 className="text-4xl lg:text-5xl font-extrabold text-white leading-tight" style={{ fontFamily: 'var(--font-display)' }}>
             Justice Shouldn't Be a
             <br />
             <span className="cta-gradient-text">Privilege.</span> It's Your Right.

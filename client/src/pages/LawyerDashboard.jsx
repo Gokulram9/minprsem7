@@ -266,7 +266,7 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
           <div className="inline-flex items-center gap-1.5 rounded-md bg-[#2563eb]/10 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-[#2563eb]">
             ⚖️ STATE ADVOCATE COUNSEL
           </div>
-          <h2 className="text-3xl font-extrabold text-slate-800 dark:text-white mt-1.5" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+          <h2 className="text-3xl font-extrabold text-slate-800 dark:text-white mt-1.5" style={{ fontFamily: 'var(--font-display)' }}>
             Welcome Back, {advocateName.split(' ')[0]}
           </h2>
           <p className="text-xs text-slate-450 font-bold mt-1">
@@ -389,7 +389,7 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
               
               {/* Today's hearings checklist */}
               <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm">
-                <h3 className="text-sm font-bold text-slate-800 dark:text-white pb-3 border-b border-slate-100 dark:border-slate-800 mb-4" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+                <h3 className="text-sm font-bold text-slate-800 dark:text-white pb-3 border-b border-slate-100 dark:border-slate-800 mb-4" style={{ fontFamily: 'var(--font-display)' }}>
                   Today's Trial Hearings Checklist
                 </h3>
                 
@@ -412,7 +412,7 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
 
               {/* Case Progress Chart (SaaS visual block) */}
               <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm">
-                <h3 className="text-sm font-bold text-slate-800 dark:text-white pb-2 border-b border-slate-100 dark:border-slate-800 mb-4" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+                <h3 className="text-sm font-bold text-slate-800 dark:text-white pb-2 border-b border-slate-100 dark:border-slate-800 mb-4" style={{ fontFamily: 'var(--font-display)' }}>
                   Advocate Representation Performance Matrix
                 </h3>
                 
@@ -487,7 +487,7 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
       {activeTab === 'assigned-cases' && (
         <div className="space-y-6">
           <div>
-            <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'var(--font-display)' }}>
               Assigned Legal Aid Cases
             </h3>
             <p className="text-xs text-slate-400">Review briefs, accept allocations, update courtroom litigation files status.</p>
@@ -581,7 +581,7 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
       {activeTab === 'my-clients' && (
         <div className="space-y-6">
           <div>
-            <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'var(--font-display)' }}>
               Assigned Legal Aid Clients
             </h3>
             <p className="text-xs text-slate-400">Access profiles, contact numbers, case histories, and uploaded document vaults.</p>
@@ -635,7 +635,7 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
           <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 dark:border-slate-850 pb-4">
               <div>
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'var(--font-display)' }}>
                   Advocate Court Calendar Schedules
                 </h3>
                 <p className="text-xs text-slate-400 font-medium">Verify execution of each stage in your legal aid pipeline.</p>
@@ -719,7 +719,7 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
           <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-6">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-850 pb-4">
               <div>
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'var(--font-display)' }}>
                   Secure Documents Vault
                 </h3>
                 <p className="text-xs text-slate-400">Search, preview, replace and audit client evidentiary documents.</p>
@@ -733,39 +733,43 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
               </button>
             </div>
 
-            <table className="premium-table">
-              <thead>
-                <tr>
-                  <th>File Name</th>
-                  <th>Category</th>
-                  <th>Uploaded By</th>
-                  <th>Date Attached</th>
-                  <th>Verification status</th>
-                  <th className="text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {documents.map((doc) => (
-                  <tr key={doc.id}>
-                    <td className="font-bold flex items-center gap-2">
-                      <FileText size={14} className="text-slate-455" />
-                      <span>{doc.name}</span>
-                    </td>
-                    <td>{doc.type}</td>
-                    <td>{doc.uploadedBy}</td>
-                    <td>{doc.date}</td>
-                    <td>
-                      <span className="badge badge-green">{doc.status}</span>
-                    </td>
-                    <td className="text-right">
-                      <button onClick={() => alert(`Previewing ${doc.name}`)} className="p-1 rounded bg-slate-100 text-slate-700 text-xs hover:bg-slate-200">
-                        Preview
-                      </button>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="premium-table">
+                <thead>
+                  <tr>
+                    <th>File Name</th>
+                    <th>Category</th>
+                    <th>Uploaded By</th>
+                    <th>Date Attached</th>
+                    <th>Verification status</th>
+                    <th className="text-right">Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {documents.map((doc) => (
+                    <tr key={doc.id}>
+                      <td className="font-bold">
+                        <div className="flex items-center gap-2">
+                          <FileText size={14} className="text-slate-400" />
+                          <span>{doc.name}</span>
+                        </div>
+                      </td>
+                      <td>{doc.type}</td>
+                      <td>{doc.uploadedBy}</td>
+                      <td>{doc.date}</td>
+                      <td>
+                        <span className="badge badge-green">{doc.status}</span>
+                      </td>
+                      <td className="text-right">
+                        <button onClick={() => alert(`Previewing ${doc.name}`)} className="p-1 rounded bg-slate-100 text-slate-700 text-xs hover:bg-slate-200">
+                          Preview
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

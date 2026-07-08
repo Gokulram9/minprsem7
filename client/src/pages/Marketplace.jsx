@@ -144,7 +144,7 @@ const Marketplace = () => {
                   <Icon size={14} />
                 </div>
                 <div>
-                  <div className="text-lg font-black leading-none" style={{ color, fontFamily: 'Space Grotesk, sans-serif' }}>{val}</div>
+                  <div className="text-lg font-black leading-none" style={{ color, fontFamily: 'var(--font-display)' }}>{val}</div>
                   <div className="text-[10px] text-[var(--text-muted)] font-semibold mt-0.5">{label}</div>
                 </div>
               </div>

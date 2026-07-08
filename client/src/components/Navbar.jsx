@@ -156,7 +156,7 @@ const Navbar = () => {
               <span
                 className="text-[15px] font-black leading-none tracking-[0.1em] uppercase"
                 style={{
-                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontFamily: 'var(--font-display)',
                   background: 'linear-gradient(90deg, #B69D74 0%, #E6D5B8 50%, #9A7E55 100%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
@@ -295,16 +295,7 @@ const Navbar = () => {
         {/* ── RIGHT: Actions (Aligned with TopBar design) ── */}
         <div className="flex items-center gap-2 shrink-0">
 
-          {/* Live Clock */}
-          <div className="topbar-clock hidden lg:flex">
-            <Clock size={11} className="text-[#B69D74] shrink-0" />
-            <div className="flex flex-col leading-none">
-              <span className="text-[10px] font-bold text-[var(--text-primary)] font-mono tabular-nums">{currentTime}</span>
-              <span className="text-[8.5px] text-[var(--text-muted)] mt-0.5">{currentDate}</span>
-            </div>
-          </div>
 
-          <div className="topbar-divider hidden lg:block" />
 
           {/* AI Button */}
           <button className="topbar-ai-btn group" onClick={() => navigate('/dashboard/ai-recommend')}>

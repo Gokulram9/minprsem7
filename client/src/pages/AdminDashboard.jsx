@@ -252,7 +252,7 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
           <div className="inline-flex items-center gap-1.5 rounded-md bg-purple-50 dark:bg-purple-950/20 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-purple-600">
             👑 SUPER ADMIN SYSTEM CONTROL
           </div>
-          <h2 className="text-3xl font-extrabold text-slate-800 dark:text-white mt-1.5" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+          <h2 className="text-3xl font-extrabold text-slate-800 dark:text-white mt-1.5" style={{ fontFamily: 'var(--font-display)' }}>
             Welcome back, {user?.name?.split(' ')[0] || 'Admin'}
           </h2>
           <p className="text-xs text-slate-450 font-bold mt-1">
@@ -344,7 +344,7 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
                       <p className="section-label">{stat.label}</p>
                       <p
                         className="text-[2.2rem] font-black leading-none mt-2 tracking-tight"
-                        style={{ fontFamily: 'Space Grotesk, sans-serif', color: 'var(--text-primary)' }}
+                        style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
                       >
                         {stat.value}
                       </p>
@@ -388,7 +388,7 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
                 <div>
                   <h3
                     className="text-sm font-bold"
-                    style={{ fontFamily: 'Space Grotesk, sans-serif', color: 'var(--text-primary)' }}
+                    style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
                   >
                     Monthly Cases Distribution
                   </h3>
@@ -520,7 +520,7 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'var(--font-display)' }}>
                 Citizen Users Directory
               </h3>
               <p className="text-xs text-slate-400">Suspend, reset passwords, or create new applicant accounts.</p>
@@ -623,7 +623,7 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
       {activeTab === 'lawyers' && (
         <div className="space-y-6">
           <div>
-            <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'var(--font-display)' }}>
               Lawyers Registry & Licensures
             </h3>
             <p className="text-xs text-slate-400">Approve registrations, audit bar licensures, evaluate performance.</p>
@@ -682,61 +682,63 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
       {activeTab === 'cases' && (
         <div className="space-y-6">
           <div>
-            <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'var(--font-display)' }}>
               Judicial Cases Management Center
             </h3>
             <p className="text-xs text-slate-400">Assign judges, courtroom halls, and attorneys to active trials.</p>
           </div>
 
-          <table className="premium-table">
-            <thead>
-              <tr>
-                <th>Docket ID</th>
-                <th>Case Title</th>
-                <th>Category</th>
-                <th>Presiding Judge</th>
-                <th>Representing Attorney</th>
-                <th>Courtroom Hall</th>
-                <th>Hearing Schedule</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cases.map((c) => (
-                <tr key={c.id}>
-                  <td><span className="font-mono text-xs">{c.id}</span></td>
-                  <td className="font-bold">{c.title}</td>
-                  <td>{c.type}</td>
-                  <td>{c.judge}</td>
-                  <td className="font-semibold text-blue-600 dark:text-blue-400">{c.lawyer}</td>
-                  <td>{c.courtroom}</td>
-                  <td>{c.nextHearing}</td>
-                  <td>
-                    <div className="inline-flex gap-2">
-                      <button
-                        onClick={() => {
-                          const judge = prompt('Assign Presiding Judge:');
-                          if (judge) setCases(cases.map(item => item.id === c.id ? { ...item, judge: `Justice ${judge}` } : item));
-                        }}
-                        className="p-1 rounded bg-slate-100 text-xs text-slate-700 hover:bg-slate-250"
-                      >
-                        Assign Judge
-                      </button>
-                      <button
-                        onClick={() => {
-                          const lawyer = prompt('Assign Representing Advocate:');
-                          if (lawyer) setCases(cases.map(item => item.id === c.id ? { ...item, lawyer: `Adv. ${lawyer}` } : item));
-                        }}
-                        className="p-1 rounded bg-slate-100 text-xs text-slate-700 hover:bg-slate-250"
-                      >
-                        Assign Lawyer
-                      </button>
-                    </div>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="premium-table">
+              <thead>
+                <tr>
+                  <th>Docket ID</th>
+                  <th>Case Title</th>
+                  <th>Category</th>
+                  <th>Presiding Judge</th>
+                  <th>Representing Attorney</th>
+                  <th>Courtroom Hall</th>
+                  <th>Hearing Schedule</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {cases.map((c) => (
+                  <tr key={c.id}>
+                    <td><span className="font-mono text-xs">{c.id}</span></td>
+                    <td className="font-bold">{c.title}</td>
+                    <td>{c.type}</td>
+                    <td>{c.judge}</td>
+                    <td className="font-semibold text-blue-600 dark:text-blue-400">{c.lawyer}</td>
+                    <td>{c.courtroom}</td>
+                    <td>{c.nextHearing}</td>
+                    <td>
+                      <div className="inline-flex gap-2">
+                        <button
+                          onClick={() => {
+                            const judge = prompt('Assign Presiding Judge:');
+                            if (judge) setCases(cases.map(item => item.id === c.id ? { ...item, judge: `Justice ${judge}` } : item));
+                          }}
+                          className="p-1 rounded bg-slate-100 text-xs text-slate-700 hover:bg-slate-250"
+                        >
+                          Assign Judge
+                        </button>
+                        <button
+                          onClick={() => {
+                            const lawyer = prompt('Assign Representing Advocate:');
+                            if (lawyer) setCases(cases.map(item => item.id === c.id ? { ...item, lawyer: `Adv. ${lawyer}` } : item));
+                          }}
+                          className="p-1 rounded bg-slate-100 text-xs text-slate-700 hover:bg-slate-250"
+                        >
+                          Assign Lawyer
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -746,7 +748,7 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
           <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b pb-4">
               <div>
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'var(--font-display)' }}>
                   Interactive Court Calendar & Hearings Tracker
                 </h3>
                 <p className="text-xs text-slate-400">Schedule new hearings, assign court halls, and resolve timing conflicts.</p>
@@ -801,62 +803,64 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
       {activeTab === 'applications' && (
         <div className="space-y-6">
           <div>
-            <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'var(--font-display)' }}>
               Legal Aid Applications Verification Desk
             </h3>
             <p className="text-xs text-slate-400">Validate applicant income certificates and approve counsel allocations.</p>
           </div>
 
-          <table className="premium-table">
-            <thead>
-              <tr>
-                <th>App ID</th>
-                <th>Applicant Name</th>
-                <th>Reported Income</th>
-                <th>Occupation</th>
-                <th>Specialization Category</th>
-                <th>Attachment proof</th>
-                <th>Status</th>
-                <th className="text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {applications.map((app) => (
-                <tr key={app.id}>
-                  <td><span className="font-mono text-xs">{app.id}</span></td>
-                  <td className="font-bold">{app.applicant}</td>
-                  <td>{app.income}</td>
-                  <td>{app.occupation}</td>
-                  <td>{app.caseType}</td>
-                  <td className="font-semibold text-blue-600 dark:text-blue-400">
-                    <button onClick={() => alert(`Opening document preview for file: ${app.document}`)} className="hover:underline flex items-center gap-1.5 text-xs font-bold">
-                      <FileText size={12} /> {app.document}
-                    </button>
-                  </td>
-                  <td>
-                    <span className={`badge ${
-                      app.status === 'Approved' ? 'badge-green' :
-                      app.status === 'Submitted' ? 'badge-slate' : 'badge-amber'
-                    }`}>
-                      {app.status}
-                    </span>
-                  </td>
-                  <td className="text-right">
-                    <div className="inline-flex gap-2">
-                      {app.status === 'Submitted' || app.status === 'Under Review' ? (
-                        <>
-                          <button onClick={() => handleApproveAid(app.id)} className="p-1 rounded bg-emerald-50 text-emerald-600 text-xs hover:bg-emerald-100 font-bold">Approve</button>
-                          <button onClick={() => handleRejectAid(app.id)} className="p-1 rounded bg-rose-50 text-rose-600 text-xs hover:bg-rose-100 font-bold">Reject</button>
-                        </>
-                      ) : (
-                        <button onClick={() => alert('Application already verified.')} disabled className="p-1 text-slate-400 text-xs">Complete</button>
-                      )}
-                    </div>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="premium-table">
+              <thead>
+                <tr>
+                  <th>App ID</th>
+                  <th>Applicant Name</th>
+                  <th>Reported Income</th>
+                  <th>Occupation</th>
+                  <th>Specialization Category</th>
+                  <th>Attachment proof</th>
+                  <th>Status</th>
+                  <th className="text-right">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {applications.map((app) => (
+                  <tr key={app.id}>
+                    <td><span className="font-mono text-xs">{app.id}</span></td>
+                    <td className="font-bold">{app.applicant}</td>
+                    <td>{app.income}</td>
+                    <td>{app.occupation}</td>
+                    <td>{app.caseType}</td>
+                    <td className="font-semibold text-blue-600 dark:text-blue-400">
+                      <button onClick={() => alert(`Opening document preview for file: ${app.document}`)} className="hover:underline flex items-center gap-1.5 text-xs font-bold">
+                        <FileText size={12} /> {app.document}
+                      </button>
+                    </td>
+                    <td>
+                      <span className={`badge ${
+                        app.status === 'Approved' ? 'badge-green' :
+                        app.status === 'Submitted' ? 'badge-slate' : 'badge-amber'
+                      }`}>
+                        {app.status}
+                      </span>
+                    </td>
+                    <td className="text-right">
+                      <div className="inline-flex gap-2">
+                        {app.status === 'Submitted' || app.status === 'Under Review' ? (
+                          <>
+                            <button onClick={() => handleApproveAid(app.id)} className="p-1 rounded bg-emerald-50 text-emerald-600 text-xs hover:bg-emerald-100 font-bold">Approve</button>
+                            <button onClick={() => handleRejectAid(app.id)} className="p-1 rounded bg-rose-50 text-rose-600 text-xs hover:bg-rose-100 font-bold">Reject</button>
+                          </>
+                        ) : (
+                          <button onClick={() => alert('Application already verified.')} disabled className="p-1 text-slate-400 text-xs">Complete</button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -865,7 +869,7 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
         <div className="space-y-6">
           <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-6">
             <div>
-              <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'var(--font-display)' }}>
                 Centralized AI Recommendation & Matching Analytics
               </h3>
               <p className="text-xs text-slate-400">Configure weighting values for matching algorithm and view stats logs.</p>
@@ -942,7 +946,7 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
                 <BarChart2 size={20} />
               </div>
               <div>
-                <h3 className="text-xl font-extrabold text-[#7c3aed] dark:text-[#a78bfa] leading-tight" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+                <h3 className="text-xl font-extrabold text-[#7c3aed] dark:text-[#a78bfa] leading-tight" style={{ fontFamily: 'var(--font-display)' }}>
                   Analytics Intelligence
                 </h3>
                 <p className="text-xs text-slate-400 font-medium mt-0.5">
@@ -1173,7 +1177,7 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
               <div className="w-full md:w-60 bg-gradient-to-tr from-[#6366f1] via-[#4f46e5] to-[#7c3aed] text-white p-5 rounded-2xl flex flex-col justify-between relative shadow-lg">
                 <div>
                   <span className="text-[9px] font-extrabold tracking-widest text-indigo-200 uppercase">TELEMETRY</span>
-                  <h4 className="text-lg font-black mt-1" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>DAILY LOGINS</h4>
+                  <h4 className="text-lg font-black mt-1" style={{ fontFamily: 'var(--font-display)' }}>DAILY LOGINS</h4>
                 </div>
                 
                 <div className="flex items-baseline gap-1.5 mt-4">

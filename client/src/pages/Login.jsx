@@ -322,6 +322,25 @@ const Login = () => {
         <div className="absolute top-0 right-0 w-80 h-80 rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, ${role?.color}12, transparent 70%)`, filter: 'blur(70px)', transition: 'background 0.5s ease' }} />
         <div className="absolute bottom-0 left-0 w-72 h-72 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(182,157,116,0.07), transparent 70%)', filter: 'blur(60px)' }} />
 
+        {/* Floating background particles */}
+        <div className="absolute inset-0 pointer-events-none z-0">
+          {particles.map((p, idx) => (
+            <div
+              key={idx}
+              className={`absolute rounded-full opacity-30 ${idx % 2 === 0 ? 'animate-float-slow' : 'animate-float-reverse'}`}
+              style={{
+                left: p.left,
+                top: p.top,
+                width: `${p.w}px`,
+                height: `${p.w}px`,
+                background: p.color,
+                animationDelay: `${p.delay}s`,
+                animationDuration: `${p.dur}s`,
+              }}
+            />
+          ))}
+        </div>
+
         {/* Grid */}
         <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)', backgroundSize: '44px 44px' }} />
 
@@ -334,7 +353,19 @@ const Login = () => {
             <Logo className="h-6 w-6 text-[#B69D74]" strokeWidth={2} />
           </div>
           <div>
-            <p className="text-white font-black text-[15px] uppercase tracking-wider" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>Seven Seas</p>
+            <p
+              className="font-bold text-[15px] uppercase tracking-wider"
+              style={{
+                fontFamily: 'var(--font-display)',
+                background: 'linear-gradient(90deg, #B69D74 0%, #E6D5B8 50%, #9A7E55 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                display: 'inline-block'
+              }}
+            >
+              Seven Seas
+            </p>
             <p className="text-[9px] text-white/30 font-bold tracking-[0.25em] uppercase mt-0.5">Justice Portal</p>
           </div>
         </div>
@@ -347,7 +378,7 @@ const Login = () => {
           </div>
 
           <div className="space-y-3">
-            <h2 className="text-[1.6rem] font-bold text-white leading-tight" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+            <h2 className="text-[1.6rem] font-bold text-white leading-tight" style={{ fontFamily: 'var(--font-display)' }}>
               Access your secure<br />judicial workspace
             </h2>
             <p className="text-[12px] text-white/40 leading-relaxed max-w-xs">
@@ -393,7 +424,7 @@ const Login = () => {
               { val: '96%', label: 'Resolution' },
             ].map(({ val, label }) => (
               <div key={label} className="text-center px-2 py-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                <div className="text-[15px] font-black text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>{val}</div>
+                <div className="text-[15px] font-black text-white" style={{ fontFamily: 'var(--font-display)' }}>{val}</div>
                 <div className="text-[8.5px] text-white/30 mt-0.5 font-semibold uppercase tracking-wider">{label}</div>
               </div>
             ))}
@@ -420,12 +451,23 @@ const Login = () => {
             <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#1A2236,#2D3A55)' }}>
               <Logo className="h-5 w-5 text-[#B69D74]" strokeWidth={2} />
             </div>
-            <span className="font-black text-[15px] text-[var(--text-primary)] uppercase tracking-wider" style={{ fontFamily: 'Space Grotesk,sans-serif' }}>Seven Seas</span>
+            <span
+              className="font-bold text-[15px] uppercase tracking-wider"
+              style={{
+                fontFamily: 'var(--font-display)',
+                background: 'linear-gradient(90deg, #B69D74 0%, #E6D5B8 50%, #9A7E55 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+            >
+              Seven Seas
+            </span>
           </div>
 
           {/* Header */}
           <div>
-            <h1 className="text-[1.65rem] font-bold tracking-tight text-[var(--text-primary)]" style={{ fontFamily: 'Space Grotesk,sans-serif' }}>
+            <h1 className="text-[1.65rem] font-bold tracking-tight text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-display)' }}>
               Welcome back
             </h1>
             <p className="text-[13px] text-[var(--text-muted)] mt-1">Sign in to your portal workspace</p>

@@ -113,12 +113,19 @@ const Sidebar = ({ collapsed, onToggle }) => {
 
             <div>
               <p
-                className="text-[15px] font-black text-white leading-none tracking-wide uppercase"
-                style={{ fontFamily: 'Space Grotesk, sans-serif' }}
+                className="text-[15px] font-bold leading-none tracking-wide uppercase"
+                style={{
+                  fontFamily: 'var(--font-display)',
+                  background: 'linear-gradient(90deg, #B69D74 0%, #E6D5B8 50%, #9A7E55 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  display: 'inline-block'
+                }}
               >
                 Seven Seas
               </p>
-              <p className="text-[9px] font-bold tracking-[0.18em] uppercase mt-0.5" style={{ color: '#B69D74' }}>
+              <p className="text-[9px] font-bold tracking-[0.18em] uppercase mt-0.5" style={{ color: '#ffffff' }}>
                 {rc.label}
               </p>
             </div>
@@ -161,38 +168,6 @@ const Sidebar = ({ collapsed, onToggle }) => {
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
           </span>
         </div>
- 
-        {/* Workspace Switcher */}
-        <div className="relative mt-3">
-          <button
-            onClick={() => setShowWorkspaces(!showWorkspaces)}
-            className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-left text-xs text-white hover:bg-white/10 transition duration-200"
-          >
-            <div className="flex items-center gap-2">
-              <div className="h-5 w-5 rounded-md bg-[#B69D74]/20 border border-[#B69D74]/30 flex items-center justify-center shrink-0">
-                <Zap size={10} className="text-[#B69D74]" />
-              </div>
-              <span className="font-bold truncate text-[11px] text-slate-350">{activeWorkspace}</span>
-            </div>
-            <ChevronDown size={11} className={`text-white/40 transition-transform ${showWorkspaces ? 'rotate-180' : ''}`} />
-          </button>
-          {showWorkspaces && (
-            <div className="absolute top-full left-0 right-0 mt-1.5 p-1 rounded-xl bg-[#0F172A] border border-white/10 shadow-2xl z-50 space-y-0.5 animate-fade-in-down">
-              {['Chambers Registry', 'AI Sandbox', 'Supreme Command'].map((w) => (
-                <button
-                  key={w}
-                  onClick={() => {
-                    setActiveWorkspace(w);
-                    setShowWorkspaces(false);
-                  }}
-                  className="w-full px-3 py-2 rounded-lg text-left text-xs text-white/70 hover:text-white hover:bg-white/5 transition"
-                >
-                  {w}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
  
       {/* ── SEARCH INPUT ── */}
@@ -215,7 +190,7 @@ const Sidebar = ({ collapsed, onToggle }) => {
           <div key={group} className={si > 0 ? 'mt-5' : ''}>
             <p
               className="px-3 mb-2 text-[9.5px] font-extrabold tracking-[0.18em] uppercase flex items-center gap-2"
-              style={{ color: 'rgba(255,255,255,0.2)', fontFamily: 'Space Grotesk, sans-serif' }}
+              style={{ color: 'rgba(255,255,255,0.2)', fontFamily: 'var(--font-display)' }}
             >
               <span className="flex-1">{groupMeta[group]?.label}</span>
               <span style={{ height: '1px', background: 'rgba(255,255,255,0.06)', flex: 1 }} />

@@ -95,7 +95,7 @@ const FindLawyers = () => {
                 { val: '48hr', label: 'Response', color: '#B69D74' },
               ].map(({ val, label, color }) => (
                 <div key={label} className="fl-stat-chip">
-                  <div className="text-lg font-black leading-none" style={{ color, fontFamily: 'Space Grotesk,sans-serif' }}>{val}</div>
+                  <div className="text-lg font-black leading-none" style={{ color, fontFamily: 'var(--font-display)' }}>{val}</div>
                   <div className="text-[9.5px] text-[var(--text-muted)] font-semibold mt-0.5">{label}</div>
                 </div>
               ))}

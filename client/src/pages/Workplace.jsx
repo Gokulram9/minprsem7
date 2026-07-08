@@ -59,7 +59,7 @@ const Workplace = () => {
             </div>
           </div>
           <div className="space-y-2">
-            <h2 className="text-xl font-bold text-[#1F2839] dark:text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+            <h2 className="text-xl font-bold text-[#1F2839] dark:text-white" style={{ fontFamily: 'var(--font-display)' }}>
               No Active Cases Registered
             </h2>
             <p className="text-xs text-[var(--text-muted)] max-w-md mx-auto leading-relaxed">
@@ -97,7 +97,7 @@ const Workplace = () => {
             <span className="inline-flex items-center gap-1.5 rounded-full bg-[#F5F3FF] px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-[#6D28D9]">
               Instructions Guide
             </span>
-            <h2 className="text-2xl font-extrabold text-[#1F2839] dark:text-white tracking-tight" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+            <h2 className="text-2xl font-extrabold text-[#1F2839] dark:text-white tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
               How to Register & Use the Platform
             </h2>
             <p className="text-xs text-[var(--text-muted)]">

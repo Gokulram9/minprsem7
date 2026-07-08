@@ -2,7 +2,7 @@ import { useContext, useState, useRef, useEffect } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
 import { ThemeContext } from '../contexts/ThemeContext';
-import { Bell, Sun, Moon, Sparkles, ChevronDown, Menu, Clock, Layers, Calendar, FileText, ShieldCheck, HelpCircle } from 'lucide-react';
+import { Bell, Sun, Moon, Sparkles, ChevronDown, Menu, Clock, Layers, Calendar, FileText, ShieldCheck, HelpCircle, Search } from 'lucide-react';
 import Logo from './Logo';
 
 const TopBar = ({ sidebarCollapsed, onToggleSidebar }) => {
@@ -84,9 +84,9 @@ const TopBar = ({ sidebarCollapsed, onToggleSidebar }) => {
             <div className="topbar-brand-icon shrink-0">
               <Logo className="h-[15px] w-[15px] text-[#B69D74]" strokeWidth={2} />
             </div>
-            <div className="hidden md:flex items-center gap-1.5 text-xs text-slate-450 dark:text-slate-400 font-semibold font-mono">
+            <div className="hidden md:flex items-center gap-1.5 text-xs text-slate-455 dark:text-slate-400 font-semibold font-mono">
               <span className="text-[var(--text-muted)] font-bold">portal</span>
-              {location.pathname.split('/').filter(x => x).map((p, idx, arr) => (
+              {location.pathname.split('/').filter(x => x && x !== 'dashboard' && x !== 'portal').map((p, idx, arr) => (
                 <span key={idx} className="flex items-center gap-1.5">
                   <span className="text-slate-400/30">/</span>
                   <span className={idx === arr.length - 1 ? 'text-[#B69D74] font-bold' : 'text-[var(--text-secondary)] font-medium hover:text-[var(--text-primary)] transition'}>
@@ -97,8 +97,14 @@ const TopBar = ({ sidebarCollapsed, onToggleSidebar }) => {
             </div>
             <div className="flex md:hidden flex-col -gap-0.5">
               <span
-                className="text-[14px] font-black leading-none tracking-[0.1em] uppercase text-white"
-                style={{ fontFamily: "'Space Grotesk', sans-serif" }}
+                className="text-[14px] font-bold leading-none tracking-[0.1em] uppercase"
+                style={{
+                  fontFamily: 'var(--font-display)',
+                  background: 'linear-gradient(90deg, #B69D74 0%, #E6D5B8 50%, #9A7E55 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                }}
               >
                 Seven Seas
               </span>
@@ -226,23 +232,14 @@ const TopBar = ({ sidebarCollapsed, onToggleSidebar }) => {
  
 
 
-          {/* Live Clock */}
-          <div className="topbar-clock hidden lg:flex">
-            <Clock size={11} className="text-[#B69D74] shrink-0" />
-            <div className="flex flex-col leading-none">
-              <span className="text-[10px] font-bold text-[var(--text-primary)] font-mono tabular-nums">{currentTime}</span>
-              <span className="text-[8.5px] text-[var(--text-muted)] mt-0.5">{currentDate}</span>
-            </div>
-          </div>
 
-          <div className="topbar-divider hidden lg:block" />
 
           {/* AI Button */}
-          <button className="topbar-ai-btn group">
+          <Link to="/dashboard/ai-recommend" className="topbar-ai-btn group">
             <Sparkles size={11} className="text-[#B69D74] group-hover:animate-spin transition-all" />
             <span>Ask AI</span>
             <span className="topbar-ai-pulse" />
-          </button>
+          </Link>
 
           <div className="topbar-divider" />
 

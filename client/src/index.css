@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;0,14..32,900;1,14..32,400&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -12,8 +12,8 @@
 @layer base {
   :root {
     /* Typography */
-    --font-sans:  'Inter', system-ui, -apple-system, sans-serif;
-    --font-display: 'Space Grotesk', 'Inter', sans-serif;
+    --font-sans:  'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --font-display: 'Cinzel', 'Playfair Display', serif;
     --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
     /* Light Theme Surfaces */
@@ -25,10 +25,10 @@
 
     /* Text Hierarchy */
     --text-primary:   #111827;
-    --text-secondary: #4B5563;
-    --text-tertiary:  #6B7280;
-    --text-muted:     #9CA3AF;
-    --text-disabled:  #D1D5DB;
+    --text-secondary: #374151;
+    --text-tertiary:  #4B5563;
+    --text-muted:     #6B7280;
+    --text-disabled:  #9CA3AF;
 
     /* Borders */
     --border-color:   #E5E7EB;
@@ -69,8 +69,8 @@
     --sidebar-border:      rgba(255,255,255,0.04);
     --sidebar-item-hover:  rgba(255,255,255,0.05);
     --sidebar-item-active: rgba(182, 157, 116, 0.18);
-    --sidebar-text:        rgba(255,255,255,0.45);
-    --sidebar-text-hover:  rgba(255,255,255,0.85);
+    --sidebar-text:        rgba(255,255,255,0.65);
+    --sidebar-text-hover:  rgba(255,255,255,0.95);
     --sidebar-text-active: #E6D5B8;
 
     /* Shadows */
@@ -101,11 +101,11 @@
     --bg-card-hover:  #152138;
     --bg-overlay:     rgba(0,0,0,0.25);
 
-    --text-primary:   #F0F4FF;
-    --text-secondary: #94A3B8;
-    --text-tertiary:  #64748B;
-    --text-muted:     #475569;
-    --text-disabled:  #334155;
+    --text-primary:   #FFFFFF;
+    --text-secondary: #E2E8F0;
+    --text-tertiary:  #94A3B8;
+    --text-muted:     #64748B;
+    --text-disabled:  #475569;
 
     --border-color:   rgba(255,255,255,0.06);
     --border-subtle:  rgba(255,255,255,0.03);
@@ -228,13 +228,15 @@
 .nav-item:hover {
   background-color: var(--sidebar-item-hover);
   color: var(--sidebar-text-hover);
+  padding-left: 15px;
 }
 
 .nav-item.active {
   background-color: var(--sidebar-item-active);
   color: var(--sidebar-text-active);
   font-weight: 600;
-  box-shadow: inset 2px 0 0 var(--gold-500);
+  box-shadow: inset 4px 0 0 var(--gold-500);
+  padding-left: 16px;
 }
 
 
@@ -1021,11 +1023,49 @@
 ═══════════════════════════════════════════════════════════════ */
 
 body.bg-layout-mesh {
-  background-image: 
-    radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--color-brand-primary) 8%, transparent) 0%, transparent 45%),
-    radial-gradient(circle at 88% 82%, color-mix(in srgb, var(--color-brand-primary) 9%, transparent) 0%, transparent 40%);
-  background-attachment: fixed;
   background-color: var(--bg-app);
+}
+
+body.bg-layout-mesh::after {
+  content: '';
+  position: fixed;
+  top: -20%;
+  left: -20%;
+  width: 60%;
+  height: 60%;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--color-brand-primary) 12%, transparent) 0%, transparent 70%);
+  filter: blur(100px);
+  z-index: -10;
+  pointer-events: none;
+  animation: bgFloatBlob1 25s ease-in-out infinite alternate;
+}
+
+body.bg-layout-mesh #root::before {
+  content: '';
+  position: fixed;
+  bottom: -20%;
+  right: -20%;
+  width: 60%;
+  height: 60%;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--color-brand-primary) 10%, transparent) 0%, transparent 70%);
+  filter: blur(110px);
+  z-index: -10;
+  pointer-events: none;
+  animation: bgFloatBlob2 30s ease-in-out infinite alternate;
+}
+
+@keyframes bgFloatBlob1 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(10vw, 15vh) scale(1.15); }
+  100% { transform: translate(-5vw, 25vh) scale(0.95); }
+}
+
+@keyframes bgFloatBlob2 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-10vw, -12vh) scale(0.9); }
+  100% { transform: translate(8vw, -5vh) scale(1.1); }
 }
 
 body.bg-layout-grid {
@@ -1165,7 +1205,7 @@ body.bg-layout-clean {
   50% { box-shadow: 0 0 12px #10B981, 0 0 20px rgba(16,185,129,0.4); }
 }
 .hero-headline {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(2.4rem, 6vw, 4.5rem);
   font-weight: 900;
   line-height: 1.05;
@@ -1411,7 +1451,7 @@ body.bg-layout-clean {
 }
 .stat-counter-item:hover .stat-icon-ring { transform: scale(1.1) rotate(5deg); }
 .stat-number {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: var(--font-display);
   font-size: 2rem;
   font-weight: 900;
   letter-spacing: -0.02em;
@@ -1442,7 +1482,7 @@ body.bg-layout-clean {
 .section-pill-gold  { background: rgba(182,157,116,0.12); color: #9A7E55; border: 1px solid rgba(182,157,116,0.3); }
 .section-pill-slate { background: rgba(100,116,139,0.1); color: #475569; border: 1px solid rgba(100,116,139,0.2); }
 .section-headline {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(1.75rem, 4vw, 2.75rem);
   font-weight: 800;
   line-height: 1.15;
@@ -1680,7 +1720,7 @@ body.bg-layout-clean {
 }
 .hiw-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-lg); }
 .hiw-step-number {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: var(--font-display);
   font-size: 4rem;
   font-weight: 900;
   line-height: 1;
@@ -1758,7 +1798,7 @@ body.bg-layout-clean {
   color: white;
   font-weight: 800;
   font-size: 14px;
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: var(--font-display);
   flex-shrink: 0;
 }
 .testimonial-glow {
@@ -3597,6 +3637,55 @@ body::before {
 @keyframes textShimmer {
   0% { background-position: 0% center; }
   100% { background-position: -200% center; }
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(3deg); }
+  100% { transform: translateY(0px) rotate(0deg); }
+}
+
+@keyframes float-reverse {
+  0% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(8px) rotate(-3deg); }
+  100% { transform: translateY(0px) rotate(0deg); }
+}
+
+@keyframes subtlePulse {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.05); opacity: 1; }
+}
+
+.animate-gradient-shift {
+  background-size: 200% 200%;
+  animation: gradientShift 6s ease-in-out infinite;
+}
+
+.animate-float-slow {
+  animation: float 8s ease-in-out infinite;
+}
+
+.animate-float-reverse {
+  animation: float-reverse 9s ease-in-out infinite;
+}
+
+.animate-pulse-subtle {
+  animation: subtlePulse 3s ease-in-out infinite;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.animate-slide-in {
+  animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* ── RESPONSIVE DASHBOARD LAYOUT ADAPTATIONS ── */
