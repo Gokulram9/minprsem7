@@ -4,6 +4,7 @@ import {
   UserCheck, AlertCircle, Calendar, Star, RefreshCw
 } from 'lucide-react';
 import Card from './ui/card';
+import axios from '../api/axios';
 
 // Custom synthesis speech recognition simulator (Web Speech API mockup or recording simulator)
 const AiChatWidget = () => {
@@ -12,6 +13,7 @@ const AiChatWidget = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [chatbotContext, setChatbotContext] = useState({});
   
   // Conversation History
   const [messages, setMessages] = useState([
@@ -89,7 +91,7 @@ const AiChatWidget = () => {
   };
 
   // Submit search query to AI engine
-  const handleSend = (textToSend = query) => {
+  const handleSend = async (textToSend = query) => {
     if (!textToSend.trim()) return;
 
     // Add user message
@@ -104,66 +106,51 @@ const AiChatWidget = () => {
     setQuery('');
     setIsTyping(true);
 
-    // AI logic response simulation
-    setTimeout(() => {
+    try {
+      const response = await axios.post('/chatbot', {
+        message: textToSend,
+        context: chatbotContext
+      });
+
       setIsTyping(false);
-      let responseText = "I parsed your legal intent. Calculating appropriate court representation...";
-      let lawyerRecommend = null;
 
-      const lowerText = textToSend.toLowerCase();
+      const aiMsg = {
+        id: Date.now() + 1,
+        sender: 'ai',
+        text: response.data.reply,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
 
-      if (lowerText.includes('divorce') || lowerText.includes('family')) {
-        responseText = "I found experienced family law specialists matching custody filings and assets negotiations. Here is the best candidate:";
-        lawyerRecommend = {
-          id: 'lawyer-1',
-          name: 'Aisha Verma',
-          specialization: 'Family Law',
-          rating: 4.9,
-          fee: 120,
-          experience: 12,
-          successRate: 96,
-          availableSlots: ['Mon 10:00', 'Wed 14:00'],
-          image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=150&q=80'
-        };
-      } else if (lowerText.includes('landlord') || lowerText.includes('deposit') || lowerText.includes('property') || lowerText.includes('criminal')) {
-        responseText = "Criminal defense cases require robust trial representation. I highly match Rohan Mehta for courtroom defenses:";
-        lawyerRecommend = {
-          id: 'lawyer-2',
-          name: 'Rohan Mehta',
-          specialization: 'Criminal Defense',
+      if (response.data.triggerRecommendation && response.data.lawyers && response.data.lawyers.length > 0) {
+        const rec = response.data.lawyers[0];
+        aiMsg.lawyerCard = {
+          id: rec.lawyerId,
+          name: rec.fullName,
+          specialization: rec.specialization,
           rating: 4.8,
-          fee: 140,
-          experience: 18,
-          successRate: 93,
-          availableSlots: ['Tue 11:00', 'Thu 15:00'],
-          image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80'
-        };
-      } else {
-        responseText = "Based on corporate compliance and employee contract structures, Nidhi Sharma represents your most high-scoring counselor:";
-        lawyerRecommend = {
-          id: 'lawyer-3',
-          name: 'Nidhi Sharma',
-          specialization: 'Corporate Advisor',
-          rating: 4.7,
-          fee: 160,
-          experience: 10,
-          successRate: 91,
-          availableSlots: ['Mon 13:00', 'Fri 14:00'],
-          image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80'
+          fee: rec.consultationFee,
+          experience: rec.experience,
+          successRate: rec.matchScore,
+          availableSlots: ['Mon 10:00 AM', 'Wed 02:00 PM'],
+          image: rec.profileImage || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80'
         };
       }
 
+      setChatbotContext(response.data.context || {});
+      setMessages((prev) => [...prev, aiMsg]);
+    } catch (err) {
+      console.error('Chatbot error:', err);
+      setIsTyping(false);
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now() + 1,
           sender: 'ai',
-          text: responseText,
-          lawyerCard: lawyerRecommend,
+          text: 'Forgive me, my neural circuits are currently experiencing communication delays. Please try again shortly.',
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]);
-    }, 1500);
+    }
   };
 
   // Immediate Appointment Booking in Widget

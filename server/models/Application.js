@@ -21,6 +21,13 @@ const applicationSchema = mongoose.Schema(
       default: 'Submitted',
     },
     urgency: { type: String, enum: ['Low', 'Medium', 'High'], default: 'Medium' },
+    occupation: { type: String },
+    monthlyIncome: { type: Number },
+    verificationStatus: {
+      type: String,
+      enum: ['Pending', 'Verified', 'Rejected'],
+      default: 'Pending',
+    },
     assignedLawyer: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     hearing: { type: mongoose.Schema.Types.ObjectId, ref: 'Hearing' },
     documents: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Document' }],

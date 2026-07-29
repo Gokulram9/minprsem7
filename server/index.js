@@ -19,6 +19,8 @@ const reportRoutes = require('./routes/reportRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const reminderRoutes = require('./routes/reminderRoutes');
 const judgmentRoutes = require('./routes/judgmentRoutes');
+const lawyerRoutes = require('./routes/lawyerRoutes');
+const chatbotRoutes = require('./routes/chatbotRoutes');
 const { errorHandler, notFound } = require('./middleware/errorMiddleware');
 
 dotenv.config();
@@ -53,6 +55,8 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/reminders', reminderRoutes);
 app.use('/api/judgments', judgmentRoutes);
+app.use('/api/lawyers', lawyerRoutes);
+app.use('/api/chatbot', chatbotRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', message: 'Legal Aid Portal API is running.' });

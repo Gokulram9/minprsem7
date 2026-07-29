@@ -49,18 +49,53 @@ A modern, responsive full-stack portal built for court case scheduling, legal ai
 
 The backend will run on port `5000` and the frontend will run on port `5175`.
 
+## API Documentation & Enpoints Summary
+
+The backend exposes a secure, modular REST API. Below are the key endpoints integrated:
+
+### 1. Authentication
+* `POST /api/auth/register` - Create user profile
+* `POST /api/auth/login` - User login (Access + Refresh Token)
+* `POST /api/auth/logout` - Invalidate session
+
+### 2. Lawyers Directory
+* `GET /api/lawyers` - Retrieve verified lawyer profiles
+* `GET /api/lawyers/filter` - Advanced query filtering (Specialization, Location, Fees, Rating)
+* `GET /api/lawyers/:id` - Fetch advocate profile details
+* `POST /api/lawyers/profile` - Create or update professional details
+* `POST /api/lawyers/:id/reviews` - Submit case ratings and comment reviews
+
+### 3. Smart Courtroom Scheduling
+* `POST /api/hearings` - Book a court hearing (runs courtroom/judge/lawyer conflict check)
+* `POST /api/hearings/check-conflict` - Check overlap conflicts for a proposed date/time slot
+* `GET /api/hearings/availability` - Fetch working slot hours
+
+### 4. Interactive NLP Chatbot
+* `POST /api/chatbot` - Dialogue parser endpoint (maps query categories, location, and fetches matching advocates)
+
+---
+
+## Verification & Testing
+
+To execute the automated backend test cases for authentications, search, and scheduling conflicts, run:
+```bash
+npm install --save-dev jest supertest
+npm test
+```
+
+---
+
 ## Deployment
 
-- Build the client:
-  ```bash
-  cd client && npm run build
-  ```
-- Configure `CLIENT_URL`, `MONGO_URI`, `JWT_SECRET`, and SMTP values in production environment.
-- Use a process manager like PM2 for the Express server:
-  ```bash
-  pm2 start server/index.js --name legal-aid-portal
-  ```
-- Docker and cloud deployment can be added by packaging the server and client separately.
+1. **Client Bundling:**
+   ```bash
+   npm --prefix client run build
+   ```
+2. **Process Manager Scheduling (PM2):**
+   ```bash
+   pm2 start server/index.js --name legal-aid-portal
+   ```
+3. **Environment Setup:** Ensure all variables from `.env.example` are configured in your cloud environment container variables.
 
 ## Python AI Module
 

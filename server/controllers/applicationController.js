@@ -13,7 +13,9 @@ const createApplication = async (req, res, next) => {
 
 const getUserApplications = async (req, res, next) => {
   try {
-    const applications = await Application.find({ applicant: req.user._id }).populate('assignedLawyer', 'name email');
+    const applications = await Application.find({ applicant: req.user._id })
+      .populate('assignedLawyer', 'name email phone location specialization')
+      .populate('hearing');
     res.json(applications);
   } catch (error) {
     next(error);
@@ -22,8 +24,39 @@ const getUserApplications = async (req, res, next) => {
 
 const getAllApplications = async (_req, res, next) => {
   try {
-    const applications = await Application.find().populate('applicant', 'name email role').populate('assignedLawyer', 'name email');
+    const applications = await Application.find()
+      .populate('applicant', 'name email role')
+      .populate('assignedLawyer', 'name email phone location specialization')
+      .populate('hearing');
     res.json(applications);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getApplicationById = async (req, res, next) => {
+  try {
+    const application = await Application.findById(req.params.id)
+      .populate('applicant', 'name email phone location')
+      .populate('assignedLawyer', 'name email phone location specialization')
+      .populate('hearing');
+    
+    if (!application) {
+      res.status(404);
+      return next(new Error('Application not found'));
+    }
+
+    // Authorization check: User must be applicant, assigned lawyer, or admin/staff
+    const isApplicant = application.applicant && application.applicant._id.toString() === req.user._id.toString();
+    const isLawyer = application.assignedLawyer && application.assignedLawyer._id.toString() === req.user._id.toString();
+    const isAdminOrStaff = req.user.role === 'Admin' || req.user.role === 'CourtStaff';
+
+    if (!isApplicant && !isLawyer && !isAdminOrStaff) {
+      res.status(403);
+      return next(new Error('Not authorized to view this application'));
+    }
+
+    res.json(application);
   } catch (error) {
     next(error);
   }
@@ -37,6 +70,13 @@ const updateApplicationStatus = async (req, res, next) => {
       return next(new Error('Application not found')); 
     }
     application.status = req.body.status || application.status;
+    if (req.body.verificationStatus) {
+      application.verificationStatus = req.body.verificationStatus;
+    } else if (['LawyerAssigned', 'CourtScheduled', 'Hearing', 'Judgment', 'Completed'].includes(application.status)) {
+      application.verificationStatus = 'Verified';
+    } else if (application.status === 'Rejected') {
+      application.verificationStatus = 'Rejected';
+    }
     application.timeline.push({ status: application.status, note: req.body.note || 'Status updated' });
     await application.save();
     res.json(application);
@@ -63,4 +103,4 @@ const assignLawyer = async (req, res, next) => {
   }
 };
 
-module.exports = { createApplication, getUserApplications, getAllApplications, updateApplicationStatus, assignLawyer };
+module.exports = { createApplication, getUserApplications, getAllApplications, getApplicationById, updateApplicationStatus, assignLawyer };

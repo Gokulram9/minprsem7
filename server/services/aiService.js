@@ -7,7 +7,10 @@ const fallbackRecommendations = [
 ];
 
 const recommendLawyers = async (payload) => {
-  const aiUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000/recommend';
+  let aiUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+  if (!aiUrl.endsWith('/recommend') && !aiUrl.endsWith('/recommend/')) {
+    aiUrl = aiUrl.replace(/\/$/, '') + '/recommend';
+  }
   try {
     const response = await axios.post(aiUrl, payload, { timeout: 5000 });
     return response.data;
@@ -18,7 +21,10 @@ const recommendLawyers = async (payload) => {
 };
 
 const searchJudgments = async (payload) => {
-  const aiUrl = process.env.AI_SERVICE_URL_JUDGMENTS || 'http://localhost:8000/search-judgments';
+  let aiUrl = process.env.AI_SERVICE_URL_JUDGMENTS || process.env.AI_SERVICE_URL || 'http://localhost:8000';
+  if (!aiUrl.endsWith('/search-judgments') && !aiUrl.endsWith('/search-judgments/')) {
+    aiUrl = aiUrl.replace(/\/$/, '') + '/search-judgments';
+  }
   try {
     const response = await axios.post(aiUrl, payload, { timeout: 10000 });
     return response.data;

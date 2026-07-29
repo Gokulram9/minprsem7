@@ -81,6 +81,42 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
     return () => clearInterval(timer);
   }, []);
 
+  const fetchDashboardData = async () => {
+    try {
+      const appResp = await axios.get('/applications');
+      const apps = appResp.data.map(a => ({
+        id: a._id,
+        applicant: a.applicant?.name || 'Unknown',
+        income: a.monthlyIncome ? `LKR ${a.monthlyIncome.toLocaleString()}/mo` : 'TBD',
+        occupation: a.occupation || 'TBD',
+        caseType: a.caseType,
+        date: new Date(a.createdAt).toLocaleDateString(),
+        status: a.status,
+        document: a.documents && a.documents.length > 0 ? a.documents[0].originalName || 'Proof.pdf' : 'NIC_Proof.pdf',
+        verification: a.verificationStatus || 'Pending'
+      }));
+      setApplications(apps);
+      
+      const userResp = await axios.get('/admin/users');
+      const mappedUsers = userResp.data.map(u => ({
+        id: u._id,
+        name: u.name,
+        email: u.email,
+        phone: u.phone || 'N/A',
+        status: 'Active',
+        date: new Date(u.createdAt).toLocaleDateString(),
+        cases: 0
+      }));
+      setApplicants(mappedUsers.filter(u => u.role !== 'Admin'));
+    } catch (err) {
+      console.error('Failed to load admin dashboard data:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [activeTab]);
+
   const todayDate = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
@@ -196,24 +232,26 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
   };
 
   // Legal Aid controls
-  const handleApproveAid = (appId) => {
-    setApplications(applications.map(a => {
-      if (a.id === appId) {
-        alert(`Aid application ${appId} approved.`);
-        return { ...a, status: 'Approved' };
-      }
-      return a;
-    }));
+  const handleApproveAid = async (appId) => {
+    try {
+      await axios.patch(`/applications/${appId}/status`, { status: 'Verification', verificationStatus: 'Verified', note: 'Income and documentation verified.' });
+      alert(`Success: Aid application ${appId} verified and approved.`);
+      fetchDashboardData();
+    } catch (err) {
+      console.error('Error approving application:', err);
+      alert('Failed to approve application.');
+    }
   };
 
-  const handleRejectAid = (appId) => {
-    setApplications(applications.map(a => {
-      if (a.id === appId) {
-        alert(`Aid application ${appId} rejected.`);
-        return { ...a, status: 'Rejected' };
-      }
-      return a;
-    }));
+  const handleRejectAid = async (appId) => {
+    try {
+      await axios.patch(`/applications/${appId}/status`, { status: 'Rejected', verificationStatus: 'Rejected', note: 'Verification rejected.' });
+      alert(`Success: Aid application ${appId} rejected.`);
+      fetchDashboardData();
+    } catch (err) {
+      console.error('Error rejecting application:', err);
+      alert('Failed to reject application.');
+    }
   };
 
   // Hearing Scheduler
@@ -838,15 +876,15 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
                     </td>
                     <td>
                       <span className={`badge ${
-                        app.status === 'Approved' ? 'badge-green' :
-                        app.status === 'Submitted' ? 'badge-slate' : 'badge-amber'
+                        app.verification === 'Verified' ? 'badge-green' :
+                        app.verification === 'Rejected' ? 'badge-red' : 'badge-amber'
                       }`}>
-                        {app.status}
+                        {app.verification}
                       </span>
                     </td>
                     <td className="text-right">
                       <div className="inline-flex gap-2">
-                        {app.status === 'Submitted' || app.status === 'Under Review' ? (
+                        {app.verification === 'Pending' ? (
                           <>
                             <button onClick={() => handleApproveAid(app.id)} className="p-1 rounded bg-emerald-50 text-emerald-600 text-xs hover:bg-emerald-100 font-bold">Approve</button>
                             <button onClick={() => handleRejectAid(app.id)} className="p-1 rounded bg-rose-50 text-rose-600 text-xs hover:bg-rose-100 font-bold">Reject</button>

@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "dev": "concurrently \"npm run server\" \"npm run client\" \"npm run ai\"",
     "server": "nodemon --watch server server/index.js",
     "client": "npm --prefix client run dev -- --host 0.0.0.0",
+    "ai": "python python/ai_recommender.py",
     "seed": "node server/seed.js",
     "start": "node server/index.js"
   },
