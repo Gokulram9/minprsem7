@@ -340,19 +340,31 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
       {activeTab === 'dashboard' && (
         <div className="space-y-6 animate-fade-in stagger">
 
-          {/* ── QUICK ACTIONS FLOATING PANEL ── */}
-          <div
-            className="flex flex-wrap gap-3 p-4 reports-glass-card rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm relative overflow-hidden"
-          >
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-[#aea668] animate-pulse" />
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Quick Command Desk</span>
+          {/* ── OFFICIAL MINISTRY OF JUSTICE OVERSIGHT & COMMAND BANNER ── */}
+          <div className="bg-white dark:bg-[#0f172a] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-900 via-amber-500 to-indigo-900" />
+            
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-md bg-blue-900/10 dark:bg-blue-500/20 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-blue-900 dark:text-blue-300 border border-blue-900/20 dark:border-blue-500/30">
+                  🏛️ MINISTRY OF JUSTICE OVERSIGHT DESK
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-[9.5px] font-bold text-emerald-600 dark:text-emerald-400">
+                  System Status: 100% Operational
+                </span>
+              </div>
+              <h2 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
+                National Judicial System & Legal Aid Compliance Panel
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Super Administrator Authority • Real-Time Docket Audit & Advocate Registry Oversight
+              </p>
             </div>
 
-            <div className="flex flex-wrap gap-2 md:ml-auto">
+            <div className="flex flex-wrap gap-2 shrink-0">
               <button
                 onClick={() => setShowScheduleHearingModal(true)}
-                className="btn-primary btn-sm flex items-center gap-1.5 shadow-md shadow-blue-500/10"
+                className="btn-primary btn-sm flex items-center gap-1.5 shadow-sm"
               >
                 <Calendar size={13} /> Schedule Hearing
               </button>
@@ -360,7 +372,7 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
                 onClick={() => setShowCreateUserModal(true)}
                 className="btn-secondary btn-sm flex items-center gap-1.5"
               >
-                <UserPlus size={13} /> Create User
+                <UserPlus size={13} /> Add User
               </button>
               <button
                 onClick={() => navigate('/dashboard/ai-recommend')}
@@ -368,12 +380,6 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
               >
                 <Sparkles size={13} /> AI Match Engine
               </button>
-            </div>
-            
-            <div className="w-full md:w-auto border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800 pt-2 md:pt-0 md:pl-4 flex items-center">
-              <span className="text-[10px] text-slate-400 font-extrabold tracking-wider">
-                {new Date().toLocaleDateString('en-GB', { weekday:'short', day:'2-digit', month:'short', year:'numeric' })}
-              </span>
             </div>
           </div>
 

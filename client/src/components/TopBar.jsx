@@ -63,6 +63,23 @@ const TopBar = ({ sidebarCollapsed, onToggleSidebar }) => {
 
   return (
     <header className="topbar-premium sticky top-0 z-30 select-none">
+      {/* 🏛️ OFFICIAL NATIONAL GOVERNMENT EMBLEM HEADER BAR */}
+      <div className="bg-[#0b1329] text-white px-5 py-1 text-[10px] font-semibold flex items-center justify-between border-b border-slate-800 tracking-wider uppercase select-none">
+        <div className="flex items-center gap-2">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-slate-300 font-bold">National Legal Aid & Judicial Services Portal</span>
+          <span className="text-slate-500">•</span>
+          <span className="text-amber-400 font-bold">Ministry of Law & Justice</span>
+        </div>
+        <div className="hidden sm:flex items-center gap-3 text-slate-400 font-mono text-[9.5px]">
+          <span>Official Government Portal</span>
+          <span>•</span>
+          <span className="text-emerald-400 flex items-center gap-1 font-bold">
+            <ShieldCheck size={11} /> 256-Bit SSL Certified
+          </span>
+        </div>
+      </div>
+
       {/* Animated gradient top bar */}
       <div className="topbar-gradient-line" />
 

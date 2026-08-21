@@ -418,24 +418,36 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
     <div className="space-y-6 animate-fade-in font-sans pb-10 text-slate-800 dark:text-slate-100">
       
       {/* ── TOP BANNER: ADVOCATE WELCOME ── */}
-      <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-1.5 rounded-md bg-[#2563eb]/10 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-[#2563eb]">
-            ⚖️ STATE ADVOCATE COUNSEL
+      <div className="bg-white dark:bg-[#0f172a] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-6 relative overflow-hidden">
+        {/* Subtle executive background accent line */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-900 via-amber-500 to-indigo-900" />
+
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-blue-900/10 dark:bg-blue-500/20 px-2.5 py-0.5 text-[10.5px] font-extrabold uppercase tracking-wider text-blue-900 dark:text-blue-300 border border-blue-900/20 dark:border-blue-500/30">
+              ⚖️ STATE BAR ASSOCIATION ADVOCATE DESK
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+              Verified Legal Aid Defender
+            </span>
           </div>
-          <h2 className="text-3xl font-extrabold text-slate-800 dark:text-white mt-1.5" style={{ fontFamily: 'var(--font-display)' }}>
-            Welcome Back, {advocateName.split(' ')[0]}
+
+          <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
+            Advocate Chamber Workspace • Welcome, {advocateName}
           </h2>
-          <p className="text-xs text-slate-450 font-bold mt-1">
-            Bar Council Reg No: BC/SL/71629 · Specialization: Family & Civil disputes
+
+          <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 font-mono">
+            BAR COUNCIL REG NO: BC/SL/71629 · CERTIFIED SPECIALIZATION: CIVIL & LITIGATION
           </p>
-          <p className="text-sm font-semibold tracking-wide text-slate-500 dark:text-slate-400 mt-3.5 max-w-2xl italic leading-relaxed" style={{ fontFamily: "'Playfair Display', serif", color: 'var(--blue-600)' }}>
-            “Let justice be done, though the heavens fall. In the defense of law, our counsel stands as the guardian of liberty and equity.”
+
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 max-w-3xl leading-relaxed italic">
+            “In the defense of law and human rights, certified legal counsel stands as the guardian of equity and constitutional representation.”
           </p>
         </div>
-        <div className="text-left md:text-right">
-          <p className="text-sm font-bold text-slate-700 dark:text-slate-250">{todayDate}</p>
-          <p className="text-xs text-slate-400 font-semibold mt-0.5">{currentTime}</p>
+
+        <div className="text-left md:text-right shrink-0 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800">
+          <p className="text-xs font-bold text-slate-800 dark:text-white">📅 {todayDate}</p>
+          <p className="text-xs text-blue-600 dark:text-blue-400 font-mono font-bold mt-0.5">🕒 {currentTime}</p>
         </div>
       </div>
 

@@ -241,12 +241,12 @@ const AiChatWidget = () => {
               </div>
               <div>
                 <h3 className="text-sm font-bold text-white tracking-wide flex items-center gap-1.5">
-                  Lexora AI Assistant
-                  <Sparkles size={13} className="text-cyan-400 animate-pulse" />
+                  Lexora AI • Judicial Assistant
+                  <ShieldCheck size={13} className="text-amber-400" />
                 </h3>
                 <p className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1.5 mt-0.5">
                   <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shadow-sm shadow-emerald-400/50" /> 
-                  Online & Active
+                  Ministry Certified Online Desk
                 </p>
               </div>
             </div>

@@ -623,45 +623,56 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
   return (
     <div className="space-y-6 animate-fade-in font-sans pb-10 text-slate-800 dark:text-slate-100">
       
-      {/* ── TOP SECTION: WELCOME CARD ── */}
-      <div className="bg-[var(--bg-card)] dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-1.5 rounded-md bg-[#2563eb]/10 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-[#2563eb]">
-            ⚡ ONLINE USER ACCESS
+      {/* ── TOP SECTION: OFFICIAL GOVERNMENT EXECUTIVE WELCOME BANNER ── */}
+      <div className="bg-white dark:bg-[#0f172a] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-6 relative overflow-hidden">
+        {/* Subtle executive background accent line */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-900 via-amber-500 to-indigo-900" />
+
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-blue-900/10 dark:bg-blue-500/20 px-2.5 py-0.5 text-[10.5px] font-extrabold uppercase tracking-wider text-blue-900 dark:text-blue-300 border border-blue-900/20 dark:border-blue-500/30">
+              🏛️ NATIONAL CITIZEN WORKSPACE
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+              <ShieldCheck size={12} /> Verified Legal Beneficiary
+            </span>
           </div>
-          <h2 className="text-2xl font-extrabold text-slate-800 dark:text-white mt-1" style={{ fontFamily: 'var(--font-display)' }}>
-            Welcome Back, User {userName} - Personal Legal Access Hub
+
+          <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
+            Citizen Legal Aid Registry • Welcome, {userName}
           </h2>
-          <p className="text-sm font-semibold tracking-wide text-slate-500 dark:text-slate-400 mt-2.5 max-w-2xl italic leading-relaxed" style={{ fontFamily: "'Playfair Display', serif", color: 'var(--blue-600)' }}>
-            “In justice, all virtues are concentrated. The shield of the law must protect the rights of every citizen with absolute equality.”
+
+          <p className="text-xs font-medium text-slate-600 dark:text-slate-300 max-w-3xl leading-relaxed">
+            “The National Legal Services System guarantees equality before the law and provides free, certified legal representation to eligible citizens under the Ministry of Justice framework.”
           </p>
-          <div className="flex items-center gap-4 text-xs text-slate-400 font-semibold mt-2.5">
-            <span>{todayDate}</span>
+
+          <div className="flex items-center gap-4 text-[11px] text-slate-500 dark:text-slate-400 font-semibold pt-1">
+            <span>📅 {todayDate}</span>
             <span>·</span>
-            <span>{currentTime}</span>
+            <span>🕒 {currentTime}</span>
+            <span>·</span>
+            <span className="font-mono text-blue-600 dark:text-blue-400 font-bold">DOCKET: CASE-2026-8841</span>
           </div>
         </div>
 
-        {/* Profile Completion tracker & Export PDF Button */}
-        <div className="w-52 shrink-0 space-y-3">
+        {/* Executive Action Desk */}
+        <div className="w-60 shrink-0 space-y-3 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800">
           <div>
-            <div className="flex items-center justify-between text-xs font-semibold mb-1">
-              <span className="text-slate-500 dark:text-slate-400">Profile Completion</span>
-              <span className="text-blue-500 font-bold">{profilePercent}%</span>
+            <div className="flex items-center justify-between text-xs font-bold mb-1.5">
+              <span className="text-slate-700 dark:text-slate-300">Identity Verification</span>
+              <span className="text-blue-600 dark:text-blue-400 font-extrabold">{profilePercent}% Complete</span>
             </div>
-            <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full">
-              <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${profilePercent}%` }} />
+            <div className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-blue-700 to-indigo-600 rounded-full transition-all duration-500" style={{ width: `${profilePercent}%` }} />
             </div>
           </div>
 
           <button
-            onClick={() => {
-              window.print();
-            }}
-            className="w-full py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-700 transition cursor-pointer"
-            title="Download or Print Official Case Summary PDF"
+            onClick={() => window.print()}
+            className="w-full py-2 px-3 rounded-lg bg-blue-900 hover:bg-blue-800 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition cursor-pointer"
+            title="Download or Print Official Certified Case Summary PDF"
           >
-            <FileDown size={14} className="text-blue-500" /> Export Case Docket PDF
+            <FileDown size={14} className="text-amber-400" /> Export Certified Case PDF
           </button>
         </div>
       </div>
