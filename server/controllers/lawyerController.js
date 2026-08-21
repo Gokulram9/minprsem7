@@ -174,6 +174,40 @@ const filterLawyers = async (req, res, next) => {
   }
 };
 
+// Retrieve public professional profile for opposing counsel without private contact details
+const getPublicOpponentLawyerProfile = async (req, res, next) => {
+  try {
+    const lawyer = await Lawyer.findById(req.params.id) || await Lawyer.findOne({ userId: req.params.id });
+    if (!lawyer) {
+      res.status(404);
+      return next(new Error('Lawyer profile not found'));
+    }
+
+    const publicProfile = {
+      id: lawyer._id,
+      fullName: lawyer.fullName,
+      profileImage: lawyer.profileImage || '',
+      barRegistrationNumber: lawyer.barRegistrationNumber,
+      specializations: lawyer.specializations,
+      practiceAreas: lawyer.practiceAreas,
+      experience: lawyer.experience,
+      education: lawyer.education,
+      certifications: lawyer.certifications,
+      languages: lawyer.languages,
+      courts: lawyer.courts,
+      location: lawyer.location,
+      rating: lawyer.rating,
+      reviewCount: lawyer.reviewCount,
+      verificationStatus: lawyer.verificationStatus,
+      bio: lawyer.bio
+    };
+
+    res.json({ success: true, data: publicProfile });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   updateLawyerProfile,
   getLawyers,
@@ -182,5 +216,6 @@ module.exports = {
   updateFees,
   createReview,
   getReviews,
-  filterLawyers
+  filterLawyers,
+  getPublicOpponentLawyerProfile
 };

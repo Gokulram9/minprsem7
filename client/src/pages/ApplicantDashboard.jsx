@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from '../api/axios';
 import { AuthContext } from '../contexts/AuthContext';
 import { ThemeContext } from '../contexts/ThemeContext';
+import ThemeCustomizer from '../components/ThemeCustomizer';
+import { initSocket, subscribeToMessages } from '../services/socket';
 import { motion } from 'framer-motion';
 import {
   Home,
@@ -42,7 +44,12 @@ import {
   Volume2,
   BookOpen,
   Smartphone,
-  ChevronDown
+  ChevronDown,
+  CreditCard,
+  DollarSign,
+  Check,
+  Receipt,
+  Shield
 } from 'lucide-react';
 
 const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
@@ -79,6 +86,126 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
 
   // Profile Sub-tabs state
   const [profileSubTab, setProfileSubTab] = useState('personal'); // 'personal' | 'security' | 'preferences' | 'feedback' | 'support'
+
+  // Fees and Lawyer Payment State
+  const defaultFeesData = [
+    {
+      id: 'FEE-2026-001',
+      caseId: 'CAS-8821',
+      caseTitle: 'Land Deed Title Clearance & Property Dispute',
+      lawyerName: 'Adv. Rajesh Sharma',
+      lawyerId: 'L-101',
+      clientName: user?.name || 'Priya Sharma',
+      clientId: user?._id || 'U-501',
+      description: 'Court Representation & Chamber Retainer Fee',
+      totalAmount: 450,
+      amountDue: 450,
+      dueDate: '2026-08-30',
+      status: 'Pending',
+      paymentMethod: null,
+      paidAt: null,
+      transactionId: null
+    },
+    {
+      id: 'FEE-2026-002',
+      caseId: 'CAS-9410',
+      caseTitle: 'Commercial Contract & Tender Audit',
+      lawyerName: 'Adv. Rajesh Sharma',
+      lawyerId: 'L-101',
+      clientName: user?.name || 'Priya Sharma',
+      clientId: user?._id || 'U-501',
+      description: 'Document Verification & Legal Drafting',
+      totalAmount: 280,
+      amountDue: 0,
+      dueDate: '2026-08-10',
+      status: 'Paid',
+      paymentMethod: 'Credit Card (**** 4242)',
+      paidAt: '2026-08-08 14:22',
+      transactionId: 'TXN-984210'
+    },
+    {
+      id: 'FEE-2026-003',
+      caseId: 'CAS-7102',
+      caseTitle: 'Tenancy Agreement & Lease Hearing',
+      lawyerName: 'Adv. Ananya Roy',
+      lawyerId: 'L-102',
+      clientName: user?.name || 'Priya Sharma',
+      clientId: user?._id || 'U-501',
+      description: 'Subsidized Court Processing & Legal Counsel',
+      totalAmount: 180,
+      amountDue: 180,
+      dueDate: '2026-08-15',
+      status: 'Overdue',
+      paymentMethod: null,
+      paidAt: null,
+      transactionId: null
+    }
+  ];
+
+  const [fees, setFees] = useState(() => {
+    const saved = localStorage.getItem('lexora_fees');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { return defaultFeesData; }
+    }
+    return defaultFeesData;
+  });
+
+  const [feeFilterStatus, setFeeFilterStatus] = useState('All');
+  const [payingFee, setPayingFee] = useState(null);
+  const [paymentStep, setPaymentStep] = useState('method'); // 'method' | 'processing' | 'success'
+  const [paymentMethod, setPaymentMethod] = useState('card');
+  const [cardForm, setCardForm] = useState({
+    number: '4242 4242 4242 4242',
+    name: user?.name || 'Priya Sharma',
+    expiry: '08/28',
+    cvc: '888',
+    upiId: 'priya@okicici'
+  });
+  const [selectedReceiptFee, setSelectedReceiptFee] = useState(null);
+
+  const saveFeesToStorage = (updatedFees) => {
+    setFees(updatedFees);
+    localStorage.setItem('lexora_fees', JSON.stringify(updatedFees));
+  };
+
+  const handleStartPayment = (fee) => {
+    setPayingFee(fee);
+    setPaymentStep('method');
+  };
+
+  const handleConfirmPayment = () => {
+    if (!payingFee) return;
+    setPaymentStep('processing');
+
+    setTimeout(() => {
+      const txnId = 'TXN-' + Math.floor(100000 + Math.random() * 900000);
+      const paidDate = new Date().toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+      const methodName = paymentMethod === 'card' 
+        ? 'Credit Card (**** 4242)' 
+        : paymentMethod === 'upi' 
+        ? `UPI (${cardForm.upiId})` 
+        : paymentMethod === 'netbanking' 
+        ? 'Net Banking (HDFC Bank)' 
+        : 'Legal Aid Wallet';
+
+      const updated = fees.map(f => {
+        if (f.id === payingFee.id) {
+          return {
+            ...f,
+            status: 'Paid',
+            amountDue: 0,
+            paymentMethod: methodName,
+            paidAt: paidDate,
+            transactionId: txnId
+          };
+        }
+        return f;
+      });
+
+      saveFeesToStorage(updated);
+      setPaymentStep('success');
+    }, 2500);
+  };
 
   // Application wizard form fields
   const [applyForm, setApplyForm] = useState({
@@ -196,7 +323,40 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+
+    if (user) {
+      initSocket(user);
+      subscribeToMessages((newMsg) => {
+        setChatMessages((prev) => {
+          if (prev.some(m => m.id === newMsg._id || m.text === newMsg.text)) return prev;
+          return [...prev, {
+            id: newMsg._id,
+            recipient: 'lawyer',
+            sender: newMsg.sender._id === user._id ? 'user' : 'lawyer',
+            text: newMsg.text,
+            time: new Date(newMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }];
+        });
+      });
+
+      axios.get('/messages')
+        .then(res => {
+          if (res.data.success && Array.isArray(res.data.data)) {
+            const dbMsgs = res.data.data.map(m => ({
+              id: m._id,
+              recipient: 'lawyer',
+              sender: m.sender._id === user._id ? 'user' : 'lawyer',
+              text: m.text,
+              time: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }));
+            if (dbMsgs.length > 0) {
+              setChatMessages(dbMsgs);
+            }
+          }
+        })
+        .catch(err => console.warn('Could not load message history:', err.message));
+    }
+  }, [user]);
 
   // AI Recommender Input & Recommendation state
   const [aiInputs, setAiInputs] = useState({
@@ -210,10 +370,24 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
   const [recommendedLawyers, setRecommendedLawyers] = useState([]);
   const [aiLoading, setAiLoading] = useState(false);
   const [compareList, setCompareList] = useState([]);
+  const [aiStepIndex, setAiStepIndex] = useState(-1);
 
   // AI Recommendation Trigger
   const triggerAiMatch = async () => {
     setAiLoading(true);
+    setAiStepIndex(0);
+    setRecommendedLawyers([]);
+
+    const stepInterval = setInterval(() => {
+      setAiStepIndex((prev) => {
+        if (prev >= 4) {
+          clearInterval(stepInterval);
+          return 4;
+        }
+        return prev + 1;
+      });
+    }, 450);
+
     try {
       const response = await axios.get('/recommendations', {
         params: {
@@ -305,9 +479,15 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
         };
       });
 
+      // Artificial delay to allow user to view the gorgeous analytics logging steps
+      await new Promise(r => setTimeout(r, 2200));
+      clearInterval(stepInterval);
+      setAiStepIndex(5);
+      
       setRecommendedLawyers(mappedLawyers);
     } catch (err) {
       console.error('Error triggering AI match:', err);
+      clearInterval(stepInterval);
     } finally {
       setAiLoading(false);
     }
@@ -391,18 +571,40 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
   };
 
   // Chat message send
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!typedMessage.trim()) return;
+
+    let receiverId = null;
+    let appId = null;
+
+    if (applications.length > 0 && applications[0].assignedLawyer) {
+      receiverId = applications[0].assignedLawyer._id || applications[0].assignedLawyer;
+      appId = applications[0]._id;
+    }
+
+    const textToSend = typedMessage;
     const newMsg = {
       id: Date.now(),
       recipient: activeChatRecipient,
       sender: 'user',
-      text: typedMessage,
+      text: textToSend,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       read: true
     };
-    setChatMessages([...chatMessages, newMsg]);
+    setChatMessages(prev => [...prev, newMsg]);
     setTypedMessage('');
+
+    if (receiverId) {
+      try {
+        await axios.post('/messages', {
+          receiver: receiverId,
+          application: appId,
+          text: textToSend
+        });
+      } catch (err) {
+        console.error('Failed to post message to backend:', err.message);
+      }
+    }
   };
 
   // Comparison toggle helper
@@ -422,7 +624,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
     <div className="space-y-6 animate-fade-in font-sans pb-10 text-slate-800 dark:text-slate-100">
       
       {/* ── TOP SECTION: WELCOME CARD ── */}
-      <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="bg-[var(--bg-card)] dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="space-y-1">
           <div className="inline-flex items-center gap-1.5 rounded-md bg-[#2563eb]/10 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-[#2563eb]">
             ⚡ ONLINE USER ACCESS
@@ -440,21 +642,73 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
           </div>
         </div>
 
-        {/* Profile Completion tracker */}
-        <div className="w-52 shrink-0">
-          <div className="flex items-center justify-between text-xs font-semibold mb-1">
-            <span className="text-slate-500 dark:text-slate-400">Profile Completion</span>
-            <span className="text-blue-500 font-bold">{profilePercent}%</span>
+        {/* Profile Completion tracker & Export PDF Button */}
+        <div className="w-52 shrink-0 space-y-3">
+          <div>
+            <div className="flex items-center justify-between text-xs font-semibold mb-1">
+              <span className="text-slate-500 dark:text-slate-400">Profile Completion</span>
+              <span className="text-blue-500 font-bold">{profilePercent}%</span>
+            </div>
+            <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full">
+              <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${profilePercent}%` }} />
+            </div>
           </div>
-          <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full">
-            <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${profilePercent}%` }} />
-          </div>
+
+          <button
+            onClick={() => {
+              window.print();
+            }}
+            className="w-full py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-700 transition cursor-pointer"
+            title="Download or Print Official Case Summary PDF"
+          >
+            <FileDown size={14} className="text-blue-500" /> Export Case Docket PDF
+          </button>
         </div>
       </div>
 
       {/* ── 1. DASHBOARD TAB ── */}
       {activeTab === 'dashboard' && (
         <div className="space-y-6">
+
+          {/* 🔔 LIVE COURT HEARING COUNTDOWN BANNER */}
+          <div className="bg-gradient-to-r from-blue-950 via-slate-900 to-indigo-950 border border-blue-500/30 rounded-2xl p-5 text-white flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl backdrop-blur-xl">
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-2xl bg-blue-600/30 border border-blue-400/40 flex items-center justify-center text-cyan-400 shrink-0 shadow-inner">
+                <Calendar size={24} className="animate-pulse" />
+              </div>
+              <div>
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/20 px-2.5 py-0.5 text-[10px] font-bold text-cyan-300 uppercase tracking-wider border border-blue-400/30">
+                  <Clock size={11} /> Next Hearing Scheduled
+                </div>
+                <h3 className="text-sm md:text-base font-bold text-white mt-1">Property Dispute Hearing • Courtroom Hall 04</h3>
+                <p className="text-xs text-slate-300">Presiding Judge: Hon. Justice Perera • District Magistrate Court</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0">
+              <div className="flex gap-2 text-center">
+                <div className="bg-slate-900/90 px-3 py-1.5 rounded-xl border border-slate-800 shadow-sm">
+                  <span className="text-sm font-black text-cyan-400">02</span>
+                  <span className="block text-[8px] uppercase text-slate-400 font-bold">Days</span>
+                </div>
+                <div className="bg-slate-900/90 px-3 py-1.5 rounded-xl border border-slate-800 shadow-sm">
+                  <span className="text-sm font-black text-cyan-400">14</span>
+                  <span className="block text-[8px] uppercase text-slate-400 font-bold">Hours</span>
+                </div>
+                <div className="bg-slate-900/90 px-3 py-1.5 rounded-xl border border-slate-800 shadow-sm">
+                  <span className="text-sm font-black text-cyan-400">30</span>
+                  <span className="block text-[8px] uppercase text-slate-400 font-bold">Mins</span>
+                </div>
+              </div>
+              
+              <button
+                onClick={() => alert('SMS & Email Hearing Notification Alert activated! You will receive reminder alerts 24h & 2h before the courtroom session.')}
+                className="btn-primary text-xs py-2 px-3.5 rounded-xl font-bold flex items-center gap-1.5 shrink-0"
+              >
+                <Bell size={13} /> Remind Me
+              </button>
+            </div>
+          </div>
           {/* Quick Actions Shortcuts */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <button
@@ -594,7 +848,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
             <div className="lg:col-span-2 space-y-6">
               
               {/* Application progress SVG chart */}
-              <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm">
+              <div className="bg-[var(--bg-card)] dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm">
                 <h3 className="text-sm font-bold text-slate-800 dark:text-white pb-3 border-b border-slate-100 dark:border-slate-800 mb-4" style={{ fontFamily: 'var(--font-display)' }}>
                   Application Progress Distribution Graph
                 </h3>
@@ -636,7 +890,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
               </div>
 
               {/* Court Allocation Worklist */}
-              <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-4">
+              <div className="bg-[var(--bg-card)] dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-4">
                 <h3 className="text-sm font-bold text-slate-800 dark:text-white pb-2 border-b border-slate-100 dark:border-slate-800" style={{ fontFamily: 'var(--font-display)' }}>
                   Court Allocation Worklist
                 </h3>
@@ -669,7 +923,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
             <div className="space-y-6">
               
               {/* Assigned Lawyer Details */}
-              <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm space-y-4">
+              <div className="bg-[var(--bg-card)] dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm space-y-4">
                 <h3 className="text-xs font-extrabold uppercase text-slate-400 tracking-wider">My Assigned Legal Counsel</h3>
                 <div className="flex items-center gap-3">
                   <div className="h-12 w-12 rounded-full bg-blue-600 text-white flex items-center justify-center font-extrabold text-lg">
@@ -693,7 +947,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
               </div>
 
               {/* Next Court Hearing details */}
-              <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm space-y-4">
+              <div className="bg-[var(--bg-card)] dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm space-y-4">
                 <h3 className="text-xs font-extrabold uppercase text-slate-400 tracking-wider">Next Court hearing</h3>
                 <div className="bg-slate-50 dark:bg-slate-900 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800">
                   <p className="text-xs font-extrabold text-blue-600 dark:text-blue-400">July 15, 2026</p>
@@ -709,7 +963,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
               </div>
 
               {/* Recent Notifications logs panel */}
-              <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm space-y-3">
+              <div className="bg-[var(--bg-card)] dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm space-y-3">
                 <h3 className="text-xs font-extrabold uppercase text-slate-400 tracking-wider">Recent Activity Logs</h3>
                 <div className="space-y-2">
                   {notifications.map((n) => (
@@ -747,7 +1001,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
           </div>
 
           {/* Search & Filter row */}
-          <div className="flex flex-wrap items-center gap-3 p-4 bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-850 shadow-sm">
+          <div className="flex flex-wrap items-center gap-3 p-4 bg-[var(--bg-card)] dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-850 shadow-sm">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
               <input
@@ -776,7 +1030,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
           </div>
 
           {/* Applications list Table layout */}
-          <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
+          <div className="bg-[var(--bg-card)] dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="premium-table">
                 <thead>
@@ -858,7 +1112,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
             <p className="text-xs text-slate-400">View live case tracking, courtroom scheduling details, and documentation.</p>
           </div>
 
-          <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
+          <div className="bg-[var(--bg-card)] dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="premium-table">
                 <thead>
@@ -918,7 +1172,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
       {/* ── 4. AI LAWYER TAB ── */}
       {activeTab === 'ai-recommend' && (
         <div className="space-y-6">
-          <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-6">
+          <div className="bg-[var(--bg-card)] dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-6">
             <div>
               <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'var(--font-display)' }}>
                 AI-Powered Advocate Recommendation System
@@ -1000,6 +1254,62 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
               </div>
             </div>
 
+            {aiLoading && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="p-5 border border-[var(--gold-500)]/30 rounded-2xl bg-[var(--gold-500)]/5 space-y-4 shadow-xl"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-xl bg-[var(--gold-500)]/10 border border-[var(--gold-500)]/20 flex items-center justify-center text-[var(--gold-500)] animate-spin" style={{ animationDuration: '3s' }}>
+                    <Sparkles size={16} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'var(--font-display)' }}>
+                      Raguel Matcher Core System Active
+                    </h4>
+                    <p className="text-[9px] text-slate-400 uppercase tracking-widest font-mono">Simulating Algorithmic Match Matrices</p>
+                  </div>
+                </div>
+
+                {/* Progress bar */}
+                <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-[var(--gold-500)] via-amber-400 to-[var(--gold-500)] transition-all duration-300"
+                    style={{ width: `${(aiStepIndex + 1) * 20}%` }}
+                  />
+                </div>
+
+                {/* Steps list */}
+                <div className="space-y-2.5 text-xs font-semibold">
+                  {[
+                    { label: 'Deconstructing litigation dispute details' },
+                    { label: 'Running lexical search on bar-council specialist indexes' },
+                    { label: 'Weighing experiences, ratings, & case load capacities' },
+                    { label: 'Evaluating geo-location proximity matching parameters' },
+                    { label: 'Finalizing recommendations matrices' }
+                  ].map((step, idx) => {
+                    const isChecked = aiStepIndex > idx;
+                    const isActive = aiStepIndex === idx;
+                    return (
+                      <div key={idx} className="flex items-center gap-2.5">
+                        <div className="h-4.5 w-4.5 rounded-full flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+                          {isChecked ? (
+                            <CheckCircle size={10} className="text-emerald-500" />
+                          ) : isActive ? (
+                            <div className="h-1.5 w-1.5 rounded-full bg-[var(--gold-500)] animate-ping" />
+                          ) : (
+                            <div className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                          )}
+                        </div>
+                        <span className={`text-[11.5px] font-medium transition-colors ${isChecked ? 'text-slate-400 line-through decoration-slate-300 dark:decoration-slate-700' : isActive ? 'text-[var(--gold-500)]' : 'text-slate-500 dark:text-slate-400'}`}>{step.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
+
             <button
               onClick={triggerAiMatch}
               disabled={aiLoading}
@@ -1043,7 +1353,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
 
               <div className="grid gap-6 md:grid-cols-2">
                 {recommendedLawyers.map((lawyer) => (
-                  <div key={lawyer.id} className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm flex flex-col justify-between">
+                  <div key={lawyer.id} className="bg-[var(--bg-card)] dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm flex flex-col justify-between">
                     <div>
                       {/* Photo and general */}
                       <div className="flex items-start gap-4">
@@ -1120,7 +1430,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
       {/* ── 5. SCHEDULE TAB ── */}
       {activeTab === 'schedule' && (
         <div className="space-y-6">
-          <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-6">
+          <div className="bg-[var(--bg-card)] dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
               <div>
                 <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'var(--font-display)' }}>
@@ -1225,7 +1535,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
       {/* ── 6. DOCUMENTS TAB ── */}
       {activeTab === 'documents' && (
         <div className="space-y-6">
-          <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-6">
+          <div className="bg-[var(--bg-card)] dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
               <div>
                 <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'var(--font-display)' }}>
@@ -1303,7 +1613,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
 
       {/* ── 7. MESSAGES TAB ── */}
       {activeTab === 'messages' && (
-        <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden h-[540px] flex">
+        <div className="bg-[var(--bg-card)] dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden h-[540px] flex">
           
           {/* Conversation list column */}
           <div className="w-72 shrink-0 border-r border-slate-100 dark:border-slate-800 flex flex-col justify-between bg-slate-50/50 dark:bg-slate-900/30">
@@ -1375,7 +1685,12 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
             {/* Chat message timeline */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/20 dark:bg-slate-900/10">
               {chatMessages
-                .filter(m => m.recipient === activeChatRecipient)
+                .filter(m => 
+                  m.recipient === activeChatRecipient || 
+                  m.recipient === 'lawyer' || 
+                  m.sender === 'lawyer' || 
+                  m.sender === 'Lawyer'
+                )
                 .map((msg) => (
                   <div key={msg.id} className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}>
                     <div className={`max-w-[70%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed ${
@@ -1407,14 +1722,197 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
                 <Send size={14} />
               </button>
             </div>
+          </div>
+        </div>
+      )}
 
+      {/* ── LAWYER FEES & PAYMENTS TAB ── */}
+      {activeTab === 'fees' && (
+        <div className="space-y-6">
+          {/* Top Banner */}
+          <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border border-slate-700/50">
+            <div className="space-y-2 z-10">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold">
+                <CreditCard size={14} /> Judicial Escrow Payment Portal
+              </div>
+              <h2 className="text-2xl font-black tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
+                Lawyer Fees & Payment Escrow
+              </h2>
+              <p className="text-slate-300 text-xs max-w-xl leading-relaxed">
+                Review counsel fees, retainers, and filing costs. Payments made here are held in safe judicial escrow until hearing confirmation.
+              </p>
+            </div>
+            <div className="flex gap-3 z-10 shrink-0">
+              <button 
+                onClick={() => {
+                  const pending = fees.find(f => f.status !== 'Paid');
+                  if (pending) handleStartPayment(pending);
+                  else alert('All current lawyer fees are paid up to date!');
+                }}
+                className="btn-primary text-xs px-5 py-3 rounded-xl flex items-center gap-2 font-bold shadow-lg shadow-blue-500/20 hover:scale-105 transition"
+              >
+                <DollarSign size={16} /> Pay Due Lawyer Fees
+              </button>
+            </div>
+            <div className="absolute right-[-20px] bottom-[-30px] w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+          </div>
+
+          {/* Metric Overview Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-[var(--bg-card)] p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                <AlertCircle size={24} />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Fees Due</p>
+                <p className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">
+                  ₹{fees.filter(f => f.status !== 'Paid').reduce((acc, f) => acc + f.amountDue, 0)}
+                </p>
+                <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium mt-1">
+                  {fees.filter(f => f.status !== 'Paid').length} pending fee invoices
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-[var(--bg-card)] p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <CheckCircle2 size={24} />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Settled Payments</p>
+                <p className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">
+                  ₹{fees.filter(f => f.status === 'Paid').reduce((acc, f) => acc + f.totalAmount, 0)}
+                </p>
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-1">
+                  {fees.filter(f => f.status === 'Paid').length} completed receipts
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-[var(--bg-card)] p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                <Clock size={24} />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Earliest Due Date</p>
+                <p className="text-base font-bold text-slate-900 dark:text-white mt-0.5">
+                  {fees.find(f => f.status !== 'Paid')?.dueDate || 'No Pending Due'}
+                </p>
+                <p className="text-[11px] text-slate-400 font-medium mt-1">
+                  {fees.find(f => f.status !== 'Paid')?.lawyerName || 'Counsel Account Verified'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Fees Table / Cards */}
+          <div className="bg-[var(--bg-card)] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Counsel Fee Statements</h3>
+                <p className="text-xs text-slate-400">View and settle retainers, court processing, and consultation fees</p>
+              </div>
+              <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl">
+                {['All', 'Pending', 'Paid', 'Overdue'].map(st => (
+                  <button
+                    key={st}
+                    onClick={() => setFeeFilterStatus(st)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                      feeFilterStatus === st 
+                        ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs' 
+                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    {st}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {fees
+                .filter(f => feeFilterStatus === 'All' ? true : f.status === feeFilterStatus)
+                .map(fee => (
+                  <div 
+                    key={fee.id}
+                    className="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 hover:border-blue-500/40 transition flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+                  >
+                    <div className="space-y-2 flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold">
+                          {fee.caseId}
+                        </span>
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                          {fee.caseTitle}
+                        </h4>
+                        <span className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full flex items-center gap-1 ${
+                          fee.status === 'Paid'
+                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                            : fee.status === 'Overdue'
+                            ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+                            : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                        }`}>
+                          {fee.status === 'Paid' && <CheckCircle2 size={11} />}
+                          {fee.status === 'Overdue' && <AlertCircle size={11} />}
+                          {fee.status === 'Pending' && <Clock size={11} />}
+                          {fee.status}
+                        </span>
+                      </div>
+                      
+                      <p className="text-xs text-slate-600 dark:text-slate-300">
+                        <strong>Description:</strong> {fee.description}
+                      </p>
+                      
+                      <div className="flex items-center gap-4 text-[11px] text-slate-400 flex-wrap">
+                        <span><strong>Counsel:</strong> {fee.lawyerName}</span>
+                        <span>•</span>
+                        <span><strong>Due Date:</strong> {fee.dueDate}</span>
+                        {fee.paidAt && (
+                          <>
+                            <span>•</span>
+                            <span className="text-emerald-500 font-medium"><strong>Paid On:</strong> {fee.paidAt} ({fee.paymentMethod})</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 shrink-0 self-end md:self-center">
+                      <div className="text-right">
+                        <p className="text-xs text-slate-400 font-semibold">Total Fee</p>
+                        <p className="text-xl font-black text-slate-900 dark:text-white">₹{fee.totalAmount}</p>
+                        {fee.amountDue > 0 ? (
+                          <p className="text-[11px] text-rose-500 font-bold">Due: ₹{fee.amountDue}</p>
+                        ) : (
+                          <p className="text-[11px] text-emerald-500 font-bold">Fully Paid</p>
+                        )}
+                      </div>
+
+                      {fee.status !== 'Paid' ? (
+                        <button
+                          onClick={() => handleStartPayment(fee)}
+                          className="btn-primary text-xs px-4 py-2.5 rounded-xl font-bold flex items-center gap-1.5 shadow-md hover:scale-105 transition"
+                        >
+                          <CreditCard size={14} /> Pay Fee Now
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setSelectedReceiptFee(fee)}
+                          className="btn-secondary text-xs px-3.5 py-2.5 rounded-xl font-bold flex items-center gap-1.5"
+                        >
+                          <Receipt size={14} /> View Receipt
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+            </div>
           </div>
         </div>
       )}
 
       {/* ── 8. PROFILE & SETTINGS TAB ── */}
       {activeTab === 'profile' && (
-        <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col md:flex-row h-auto min-h-[500px]">
+        <div className="bg-[var(--bg-card)] dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col md:flex-row h-auto min-h-[500px]">
           
           {/* Profile settings tabs selector (Left 1/4) */}
           <div className="w-full md:w-56 shrink-0 border-r border-slate-150 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-900/30 p-4 space-y-1">
@@ -1556,11 +2054,14 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
 
             {/* PREFERENCES SUBTAB */}
             {profileSubTab === 'preferences' && (
-              <div className="space-y-6 animate-fade-in max-w-xl">
+              <div className="space-y-6 animate-fade-in max-w-4xl">
                 <div>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">Workspace Preferences Settings</h4>
-                  <p className="text-xs text-slate-400">Configure visual themes and notification channels.</p>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">Workspace Preferences & Design Settings</h4>
+                  <p className="text-xs text-slate-400">Configure visual themes, contrast modes, text size scaling, and notification channels.</p>
                 </div>
+
+                {/* Embedded Design & Accessibility Customizer */}
+                <ThemeCustomizer />
 
                 <div className="space-y-4">
                   {/* Theme toggler */}
@@ -1718,7 +2219,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
       {/* ── 9. APPLICATIONS DETAILS VIEW MODAL ── */}
       {selectedApp && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-850 p-6 max-w-lg w-full space-y-6 shadow-2xl relative">
+          <div className="bg-[var(--bg-card)] dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-850 p-6 max-w-lg w-full space-y-6 shadow-2xl relative">
             <button onClick={() => setSelectedApp(null)} className="absolute right-5 top-5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xl font-bold">×</button>
             
             <div>
@@ -1776,7 +2277,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
       {/* ── 10. CASES TRACKING DETAILS MODAL ── */}
       {selectedCase && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-850 p-6 max-w-lg w-full space-y-6 shadow-2xl relative">
+          <div className="bg-[var(--bg-card)] dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-850 p-6 max-w-lg w-full space-y-6 shadow-2xl relative">
             <button onClick={() => setSelectedCase(null)} className="absolute right-5 top-5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xl font-bold">×</button>
             
             <div>
@@ -1813,7 +2314,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
       {/* ── 11. SUBMIT LEGAL AID MULTI-STEP WIZARD MODAL ── */}
       {showApplyModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-850 p-6 max-w-lg w-full space-y-6 shadow-2xl relative">
+          <div className="bg-[var(--bg-card)] dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-850 p-6 max-w-lg w-full space-y-6 shadow-2xl relative">
             <button onClick={() => setShowApplyModal(false)} className="absolute right-5 top-5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xl font-bold">×</button>
             
             <div>
@@ -1963,6 +2464,299 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
                 </div>
               )}
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── PAYMENT MODAL (WITH MOTION ANIMATIONS) ── */}
+      {payingFee && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 w-full max-w-lg shadow-2xl overflow-hidden relative">
+            
+            {/* Modal Header */}
+            <div className="p-6 bg-gradient-to-r from-slate-900 to-indigo-950 text-white relative">
+              <button 
+                onClick={() => setPayingFee(null)}
+                className="absolute right-5 top-5 text-slate-400 hover:text-white text-xl font-bold"
+              >
+                ×
+              </button>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-bold mb-2">
+                <Shield size={12} /> Secure Escrow Checkout
+              </div>
+              <h3 className="text-xl font-black">{payingFee.caseTitle}</h3>
+              <p className="text-xs text-slate-300 mt-1">Lawyer: {payingFee.lawyerName} • Case ID: {payingFee.caseId}</p>
+            </div>
+
+            {/* STEP 1: PAYMENT METHOD SELECT & DETAILS */}
+            {paymentStep === 'method' && (
+              <div className="p-6 space-y-5">
+                <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-100 dark:border-slate-850 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-slate-400 font-semibold">Amount to Pay</p>
+                    <p className="text-2xl font-black text-slate-900 dark:text-white">₹{payingFee.amountDue}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-400 font-semibold">Due Date</p>
+                    <p className="text-xs font-bold text-amber-500">{payingFee.dueDate}</p>
+                  </div>
+                </div>
+
+                {/* Payment Method Tabs */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Select Payment Method</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 'card', label: 'Card', icon: CreditCard },
+                      { id: 'upi', label: 'UPI / Wallet', icon: Smartphone },
+                      { id: 'netbanking', label: 'Net Banking', icon: BookOpen },
+                    ].map(pm => {
+                      const IconComp = pm.icon;
+                      return (
+                        <button
+                          key={pm.id}
+                          type="button"
+                          onClick={() => setPaymentMethod(pm.id)}
+                          className={`p-3 rounded-2xl border flex flex-col items-center gap-1.5 transition text-xs font-bold ${
+                            paymentMethod === pm.id
+                              ? 'border-blue-600 bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                              : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                          }`}
+                        >
+                          <IconComp size={18} />
+                          {pm.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Form fields depending on method */}
+                {paymentMethod === 'card' && (
+                  <div className="space-y-3 bg-slate-50 dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 text-xs">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-500 mb-1">Card Number</label>
+                      <input 
+                        type="text" 
+                        value={cardForm.number}
+                        onChange={e => setCardForm({...cardForm, number: e.target.value})}
+                        className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-mono"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-500 mb-1">Expiry Date</label>
+                        <input 
+                          type="text" 
+                          value={cardForm.expiry}
+                          onChange={e => setCardForm({...cardForm, expiry: e.target.value})}
+                          className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-500 mb-1">CVC / CVV</label>
+                        <input 
+                          type="password" 
+                          value={cardForm.cvc}
+                          onChange={e => setCardForm({...cardForm, cvc: e.target.value})}
+                          className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {paymentMethod === 'upi' && (
+                  <div className="space-y-3 bg-slate-50 dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 text-xs">
+                    <label className="block text-[11px] font-bold text-slate-500 mb-1">Enter UPI Virtual Address</label>
+                    <input 
+                      type="text" 
+                      value={cardForm.upiId}
+                      onChange={e => setCardForm({...cardForm, upiId: e.target.value})}
+                      placeholder="username@upi"
+                      className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs font-mono"
+                    />
+                  </div>
+                )}
+
+                {paymentMethod === 'netbanking' && (
+                  <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300">
+                    <p className="font-bold mb-2">Select Escrow Partner Bank:</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {['HDFC Judicial Gateway', 'State Bank Escrow', 'Commercial Bank Aid', 'National Treasury Gateway'].map((b, i) => (
+                        <div key={b} className={`p-2 rounded-xl border text-[11px] font-semibold cursor-pointer ${i === 0 ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 text-blue-600' : 'border-slate-200 dark:border-slate-800'}`}>
+                          {b}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-2">
+                  <button
+                    onClick={handleConfirmPayment}
+                    className="w-full btn-primary py-3.5 rounded-2xl font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 hover:scale-[1.01] transition"
+                  >
+                    <ShieldCheck size={18} /> Confirm & Deposit ₹{payingFee.amountDue} in Escrow
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 2: PROCESSING MOTION ANIMATION */}
+            {paymentStep === 'processing' && (
+              <div className="p-10 flex flex-col items-center justify-center text-center space-y-6">
+                <div className="relative">
+                  <motion.div 
+                    animate={{ rotate: 360 }}
+                    transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                    className="w-20 h-20 rounded-full border-4 border-blue-500 border-t-transparent"
+                  />
+                  <motion.div 
+                    animate={{ scale: [0.9, 1.1, 0.9] }}
+                    transition={{ repeat: Infinity, duration: 2 }}
+                    className="absolute inset-0 flex items-center justify-center text-blue-500"
+                  >
+                    <Lock size={24} />
+                  </motion.div>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="text-lg font-black text-slate-900 dark:text-white">Processing Judicial Escrow Payment</h4>
+                  <p className="text-xs text-slate-400 max-w-xs mx-auto">
+                    Connecting to encrypted payment gateway and verifying advocate account...
+                  </p>
+                </div>
+
+                <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <motion.div 
+                    initial={{ width: "0%" }}
+                    animate={{ width: "100%" }}
+                    transition={{ duration: 2.3, ease: "easeInOut" }}
+                    className="bg-gradient-to-r from-blue-600 to-emerald-500 h-full rounded-full"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3: SUCCESS CELEBRATION ANIMATION */}
+            {paymentStep === 'success' && (
+              <div className="p-8 text-center space-y-6">
+                {/* Animated Spring Checkmark */}
+                <motion.div 
+                  initial={{ scale: 0, rotate: -45 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                  className="w-20 h-20 mx-auto rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center border-2 border-emerald-500/40 glow-card-green"
+                >
+                  <CheckCircle2 size={44} />
+                </motion.div>
+
+                <div className="space-y-1">
+                  <span className="inline-block px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-xs font-bold uppercase tracking-wider mb-1">
+                    Payment Escrow Secured
+                  </span>
+                  <h4 className="text-2xl font-black text-slate-900 dark:text-white">Payment Successful!</h4>
+                  <p className="text-xs text-slate-400">
+                    Your payment for ₹{payingFee.amountDue} has been transferred to judicial escrow.
+                  </p>
+                </div>
+
+                <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 text-xs space-y-2 text-left">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Transaction Ref:</span>
+                    <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                      {fees.find(f => f.id === payingFee.id)?.transactionId}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Counsel:</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200">{payingFee.lawyerName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Case Title:</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200">{payingFee.caseTitle}</span>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button 
+                    onClick={() => {
+                      const updatedFee = fees.find(f => f.id === payingFee.id);
+                      setSelectedReceiptFee(updatedFee);
+                      setPayingFee(null);
+                    }}
+                    className="flex-1 btn-secondary py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5"
+                  >
+                    <Receipt size={14} /> Download Receipt
+                  </button>
+                  <button 
+                    onClick={() => setPayingFee(null)}
+                    className="flex-1 btn-primary py-3 rounded-xl font-bold text-xs"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── RECEIPT MODAL ── */}
+      {selectedReceiptFee && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 w-full max-w-md shadow-2xl p-6 relative space-y-5">
+            <button 
+              onClick={() => setSelectedReceiptFee(null)}
+              className="absolute right-5 top-5 text-slate-400 hover:text-slate-600 dark:hover:text-white text-xl font-bold"
+            >
+              ×
+            </button>
+            <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                <Receipt size={20} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Payment Receipt</h3>
+                <p className="text-xs text-slate-400 font-mono">Ref: {selectedReceiptFee.transactionId}</p>
+              </div>
+            </div>
+
+            <div className="space-y-2 text-xs bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-100 dark:border-slate-850">
+              <div className="flex justify-between py-1 border-b border-slate-200/50 dark:border-slate-800">
+                <span className="text-slate-400">Case ID:</span>
+                <span className="font-bold text-slate-900 dark:text-white">{selectedReceiptFee.caseId}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-200/50 dark:border-slate-800">
+                <span className="text-slate-400">Lawyer:</span>
+                <span className="font-bold text-slate-900 dark:text-white">{selectedReceiptFee.lawyerName}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-200/50 dark:border-slate-800">
+                <span className="text-slate-400">Amount Paid:</span>
+                <span className="font-bold text-emerald-500">₹{selectedReceiptFee.totalAmount}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-200/50 dark:border-slate-800">
+                <span className="text-slate-400">Paid On:</span>
+                <span className="font-bold text-slate-900 dark:text-white">{selectedReceiptFee.paidAt}</span>
+              </div>
+              <div className="flex justify-between py-1">
+                <span className="text-slate-400">Method:</span>
+                <span className="font-bold text-slate-900 dark:text-white">{selectedReceiptFee.paymentMethod}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button 
+                onClick={() => {
+                  alert('Official PDF Fee Receipt downloaded to device.');
+                  setSelectedReceiptFee(null);
+                }}
+                className="w-full btn-primary py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2"
+              >
+                <Download size={14} /> Download PDF Receipt
+              </button>
+            </div>
           </div>
         </div>
       )}

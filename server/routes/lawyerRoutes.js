@@ -7,7 +7,8 @@ const {
   updateFees,
   createReview,
   getReviews,
-  filterLawyers
+  filterLawyers,
+  getPublicOpponentLawyerProfile
 } = require('../controllers/lawyerController');
 const { protect } = require('../middleware/authMiddleware');
 const { authorizeRoles } = require('../middleware/roleMiddleware');
@@ -16,6 +17,7 @@ const router = express.Router();
 
 router.get('/', getLawyers);
 router.get('/filter', filterLawyers);
+router.get('/:id/public-opponent', getPublicOpponentLawyerProfile);
 router.get('/:id', getLawyerById);
 
 router.post('/profile', protect, authorizeRoles('Lawyer'), updateLawyerProfile);

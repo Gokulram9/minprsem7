@@ -291,7 +291,7 @@ const Marketplace = () => {
                         Consultation
                       </span>
                       <span className="text-[13px] font-black text-[var(--text-primary)]">
-                        ${lawyer.fee}<span className="text-[10px] font-semibold text-[var(--text-muted)]">/session</span>
+                        ₹{lawyer.fee}<span className="text-[10px] font-semibold text-[var(--text-muted)]">/session</span>
                       </span>
                     </div>
                     <div className="flex items-center justify-between mt-2 pt-2 border-t border-[var(--border-color)]">

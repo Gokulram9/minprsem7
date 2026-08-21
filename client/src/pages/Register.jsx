@@ -10,6 +10,8 @@ import Footer from '../components/Footer';
 import Button from '../components/ui/button';
 import Input from '../components/ui/input';
 import { AuthContext } from '../contexts/AuthContext';
+import InteractiveCanvasBackground from '../components/InteractiveCanvasBackground';
+
 
 const steps = [
   { id: 1, name: 'Identity' },
@@ -113,7 +115,8 @@ const Register = () => {
   }, [currentStep]);
 
   return (
-    <div className="relative min-h-screen bg-slate-50 text-slate-950 transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100">
+    <div className="relative min-h-screen bg-slate-50 text-slate-950 transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100 overflow-hidden">
+      <InteractiveCanvasBackground density={50} maxDistance={120} speed={0.5} interactive={true} />
       <Navbar />
 
       <div className="mx-auto max-w-4xl px-6 py-12">

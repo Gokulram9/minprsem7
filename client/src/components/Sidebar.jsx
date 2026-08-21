@@ -6,7 +6,7 @@ import {
   Users, Scale, ShieldAlert, FolderOpen, Calendar,
   Sparkles, BarChart2, ChevronLeft, MessageSquare, User,
   Home, LogOut, Settings, ArrowUpRight, Zap, Shield,
-  ChevronDown, Search
+  ChevronDown, Search, CreditCard
 } from 'lucide-react';
 
 const Sidebar = ({ collapsed, onToggle }) => {
@@ -35,6 +35,7 @@ const Sidebar = ({ collapsed, onToggle }) => {
     { to: '/dashboard', end: true, label: 'Dashboard',    icon: Home,          group: 'overview' },
     { to: '/dashboard/applications',label: 'Applications', icon: ShieldAlert,   group: 'workspace' },
     { to: '/dashboard/cases',       label: 'My Cases',     icon: Scale,         group: 'workspace' },
+    { to: '/dashboard/fees',        label: 'Lawyer Fees',  icon: CreditCard,    group: 'workspace' },
     { to: '/dashboard/judgments',   label: 'Precedents',   icon: Scale,         group: 'workspace' },
     { to: '/dashboard/ai-recommend',label: 'Counsel Matcher', icon: Sparkles,      group: 'workspace' },
     { to: '/dashboard/schedule',    label: 'Schedule',     icon: Calendar,      group: 'workspace' },
@@ -47,6 +48,7 @@ const Sidebar = ({ collapsed, onToggle }) => {
     { to: '/dashboard', end: true,  label: 'Dashboard',     icon: Home,           group: 'overview' },
     { to: '/dashboard/assigned-cases',label: 'Cases',         icon: Scale,          group: 'workspace' },
     { to: '/dashboard/my-clients',   label: 'Clients',        icon: Users,          group: 'workspace' },
+    { to: '/dashboard/fees',         label: 'Client Fees',    icon: CreditCard,     group: 'workspace' },
     { to: '/dashboard/judgments',    label: 'Precedents',     icon: Scale,          group: 'workspace' },
     { to: '/dashboard/schedule',     label: 'Schedule',       icon: Calendar,       group: 'workspace' },
     { to: '/dashboard/documents',    label: 'Documents',      icon: FolderOpen,     group: 'workspace' },
@@ -76,10 +78,10 @@ const Sidebar = ({ collapsed, onToggle }) => {
   }, []);
 
   const roleConfig = {
-    Admin:    { label: 'System Control', color: '#8B5CF6', bg: 'rgba(139,92,246,0.12)', border: 'rgba(139,92,246,0.2)' },
-    Lawyer:   { label: 'Lawyer Portal',  color: '#3B82F6', bg: 'rgba(59,130,246,0.12)',  border: 'rgba(59,130,246,0.2)' },
-    User:     { label: 'Citizen Space',  color: '#B69D74', bg: 'rgba(182,157,116,0.12)', border: 'rgba(182,157,116,0.2)' },
-    Applicant:{ label: 'Citizen Space',  color: '#B69D74', bg: 'rgba(182,157,116,0.12)', border: 'rgba(182,157,116,0.2)' },
+    Admin:    { label: 'System Control', color: '#AEA668', bg: 'rgba(174,166,104,0.12)', border: 'rgba(174,166,104,0.2)', iconBg: 'rgba(174,166,104,0.2)' },
+    Lawyer:   { label: 'Lawyer Portal',  color: '#60B3D1', bg: 'rgba(96,179,209,0.12)',  border: 'rgba(96,179,209,0.2)',  iconBg: 'rgba(96,179,209,0.2)' },
+    User:     { label: 'Citizen Space',  color: '#AEA668', bg: 'rgba(174,166,104,0.12)', border: 'rgba(174,166,104,0.2)', iconBg: 'rgba(174,166,104,0.2)' },
+    Applicant:{ label: 'Citizen Space',  color: '#AEA668', bg: 'rgba(174,166,104,0.12)', border: 'rgba(174,166,104,0.2)', iconBg: 'rgba(174,166,104,0.2)' },
   };
   const rc = roleConfig[role] || roleConfig['User'];
   const userInitial = (user?.name || 'U').charAt(0).toUpperCase();
@@ -90,13 +92,19 @@ const Sidebar = ({ collapsed, onToggle }) => {
         collapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-[268px] opacity-100'
       }`}
       style={{
-        background: 'linear-gradient(180deg, #0D1626 0%, #111E32 30%, #0F1A2D 70%, #0D1626 100%)',
+        background: (role === 'User' || role === 'Applicant')
+          ? 'linear-gradient(180deg, #363940 0%, #2D2F35 30%, #292B30 70%, #202226 100%)'
+          : (role === 'Lawyer')
+          ? 'linear-gradient(180deg, #012641 0%, #011E33 30%, #011728 70%, #000E1B 100%)'
+          : (role === 'Admin' || role === 'CourtStaff')
+          ? 'linear-gradient(180deg, #212530 0%, #1D2029 30%, #181B22 70%, #111319 100%)'
+          : 'linear-gradient(180deg, #0D1626 0%, #111E32 30%, #0F1A2D 70%, #0D1626 100%)',
         borderRight: collapsed ? 'none' : '1px solid rgba(255,255,255,0.05)',
         boxShadow: collapsed ? 'none' : '4px 0 24px rgba(0,0,0,0.3)',
       }}
     >
       {/* Top glow line */}
-      <div style={{ height: '2px', background: 'linear-gradient(90deg, transparent, #B69D74, #3B82F6, #8B5CF6, transparent)', opacity: 0.5 }} />
+      <div style={{ height: '2px', background: `linear-gradient(90deg, transparent, ${rc.color}, #3B82F6, #8B5CF6, transparent)`, opacity: 0.5 }} />
 
       {/* ── HEADER ── */}
       <div className="px-4 pt-5 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
@@ -105,21 +113,18 @@ const Sidebar = ({ collapsed, onToggle }) => {
             {/* Animated logo mark */}
             <div
               className="sidebar-logo-mark h-10 w-10 rounded-2xl flex items-center justify-center shrink-0 relative overflow-hidden"
-              style={{ background: 'rgba(182,157,116,0.1)', border: '1px solid rgba(182,157,116,0.2)' }}
+              style={{ background: rc.bg, border: `1px solid ${rc.border}` }}
             >
               <div className="absolute inset-0 sidebar-logo-shimmer" />
-              <Logo className="h-5 w-5 text-[#B69D74] relative z-10" strokeWidth={2} />
+              <Logo className="h-5 w-5 relative z-10" strokeWidth={2} style={{ color: rc.color }} />
             </div>
 
             <div>
               <p
-                className="text-[15px] font-bold leading-none tracking-wide uppercase"
+                className="text-[15px] font-bold leading-none tracking-wide uppercase bg-clip-text text-transparent"
                 style={{
                   fontFamily: 'var(--font-display)',
-                  background: 'linear-gradient(90deg, #B69D74 0%, #E6D5B8 50%, #9A7E55 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
+                  backgroundImage: `linear-gradient(90deg, ${rc.color} 0%, ${(role === 'User' || role === 'Applicant') ? '#E6D5B8' : (role === 'Lawyer') ? '#F4FBFD' : (role === 'Admin' || role === 'CourtStaff') ? '#E6D5B8' : '#E6D5B8'} 50%, ${rc.color} 100%)`,
                   display: 'inline-block'
                 }}
               >
@@ -148,8 +153,12 @@ const Sidebar = ({ collapsed, onToggle }) => {
           <div
             className="h-8 w-8 rounded-lg flex items-center justify-center text-xs font-black text-white shrink-0"
             style={{
-              background: rc.color === '#B69D74'
-                ? 'linear-gradient(135deg,#9A7E55,#B69D74)'
+              background: (role === 'User' || role === 'Applicant')
+                ? 'linear-gradient(135deg,#908852,#AEA668)'
+                : (role === 'Lawyer')
+                ? 'linear-gradient(135deg,#3B8EA8,#60B3D1)'
+                : (role === 'Admin' || role === 'CourtStaff')
+                ? 'linear-gradient(135deg,#908852,#AEA668)'
                 : rc.color === '#3B82F6'
                 ? 'linear-gradient(135deg,#1D4ED8,#3B82F6)'
                 : 'linear-gradient(135deg,#6D28D9,#8B5CF6)',
@@ -158,7 +167,7 @@ const Sidebar = ({ collapsed, onToggle }) => {
             {userInitial}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[11px] font-bold text-white truncate">{user?.name || 'User'}</p>
+            <p className="text-[11px] font-bold truncate" style={{ color: (role === 'Admin' || role === 'CourtStaff') ? '#AEA668' : '#ffffff' }}>{user?.name || 'User'}</p>
             <p className="text-[9px] font-bold uppercase tracking-wider mt-0.5" style={{ color: rc.color }}>
               {role}
             </p>
@@ -207,19 +216,20 @@ const Sidebar = ({ collapsed, onToggle }) => {
                     className={({ isActive }) =>
                       `sidebar-nav-item group flex items-center gap-3 px-3 py-2.5 rounded-xl text-[12.5px] font-medium transition-all duration-150 relative overflow-hidden ${
                         isActive
-                          ? 'sidebar-nav-active text-[#E6D5B8] font-semibold'
+                          ? 'sidebar-nav-active font-semibold'
                           : 'text-[rgba(255,255,255,0.4)] hover:text-[rgba(255,255,255,0.85)]'
                       }`
                     }
                     style={({ isActive }) => isActive ? {
-                      background: 'linear-gradient(90deg, rgba(182,157,116,0.12), rgba(182,157,116,0.04))',
+                      color: (role === 'User' || role === 'Applicant') ? '#E9ECDB' : (role === 'Lawyer') ? '#F4FBFD' : (role === 'Admin' || role === 'CourtStaff') ? '#AEA668' : '#E6D5B8',
+                      background: `linear-gradient(90deg, ${rc.bg}, rgba(255,255,255,0.01))`,
                     } : {}}
                   >
                     {({ isActive }) => (
                       <>
                         {/* Active indicator bar */}
                         {isActive && (
-                          <div className="sidebar-active-bar" style={{ background: '#B69D74' }} />
+                          <div className="sidebar-active-bar" style={{ background: rc.color }} />
                         )}
                         
                         {/* Icon container */}
@@ -228,7 +238,7 @@ const Sidebar = ({ collapsed, onToggle }) => {
                             isActive ? 'shadow-sm' : ''
                           }`}
                           style={isActive
-                            ? { background: 'rgba(182,157,116,0.2)', color: '#B69D74' }
+                            ? { background: rc.iconBg, color: rc.color }
                             : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.35)' }
                           }
                         >

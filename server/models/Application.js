@@ -29,6 +29,8 @@ const applicationSchema = mongoose.Schema(
       default: 'Pending',
     },
     assignedLawyer: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    opposingLawyer: { type: mongoose.Schema.Types.ObjectId, ref: 'Lawyer' },
+    opponentName: { type: String, default: 'Pending Opponent Filing' },
     hearing: { type: mongoose.Schema.Types.ObjectId, ref: 'Hearing' },
     documents: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Document' }],
     notifications: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Notification' }],

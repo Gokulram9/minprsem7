@@ -325,8 +325,8 @@ const LawyerProfile = () => {
             <div className="lp-fees-block mt-4">
               {[
                 { label: 'Response Speed', value: lawyer.responseTime || '< 48hr' },
-                { label: 'Consultation Rate', value: `$${lawyer.fee}/session` },
-                { label: 'Docket Filing', value: `$${lawyer.fees?.filing || 200}` },
+                { label: 'Consultation Rate', value: `₹${lawyer.fee}/session` },
+                { label: 'Docket Filing', value: `₹${lawyer.fees?.filing || 200}` },
                 { label: 'Legal Aid Eligible', value: 'Yes', highlight: true },
               ].map(({ label, value, highlight }) => (
                 <div key={label} className="lp-fee-row">

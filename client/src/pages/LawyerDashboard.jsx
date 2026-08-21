@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from '../api/axios';
 import { AuthContext } from '../contexts/AuthContext';
 import { ThemeContext } from '../contexts/ThemeContext';
+import ThemeCustomizer from '../components/ThemeCustomizer';
+import { initSocket, subscribeToMessages } from '../services/socket';
 import { motion } from 'framer-motion';
 import {
   FolderOpen,
@@ -34,10 +36,11 @@ import {
   Lock,
   ChevronDown,
   Trash2,
-  Activity,
-  UserCheck,
   Filter,
-  Star
+  Star,
+  CreditCard,
+  DollarSign,
+  Receipt
 } from 'lucide-react';
 
 const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
@@ -79,6 +82,88 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
   // Profile/Settings Sub-tabs
   const [profileSubTab, setProfileSubTab] = useState('personal'); // 'personal' | 'performance' | 'security' | 'preferences'
 
+  // Client Fees State
+  const defaultFeesData = [
+    {
+      id: 'FEE-2026-001',
+      caseId: 'CAS-8821',
+      caseTitle: 'Land Deed Title Clearance & Property Dispute',
+      lawyerName: user?.name || 'Adv. Rajesh Sharma',
+      lawyerId: user?._id || 'L-101',
+      clientName: 'Priya Sharma',
+      clientId: 'U-501',
+      description: 'Court Representation & Chamber Retainer Fee',
+      totalAmount: 450,
+      amountDue: 450,
+      dueDate: '2026-08-30',
+      status: 'Pending',
+      paymentMethod: null,
+      paidAt: null,
+      transactionId: null
+    },
+    {
+      id: 'FEE-2026-002',
+      caseId: 'CAS-9410',
+      caseTitle: 'Commercial Contract & Tender Audit',
+      lawyerName: user?.name || 'Adv. Rajesh Sharma',
+      lawyerId: user?._id || 'L-101',
+      clientName: 'Sunil Perera',
+      clientId: 'U-502',
+      description: 'Document Verification & Legal Drafting',
+      totalAmount: 280,
+      amountDue: 0,
+      dueDate: '2026-08-10',
+      status: 'Paid',
+      paymentMethod: 'Credit Card (**** 4242)',
+      paidAt: '2026-08-08 14:22',
+      transactionId: 'TXN-984210'
+    },
+    {
+      id: 'FEE-2026-003',
+      caseId: 'CAS-7102',
+      caseTitle: 'Tenancy Agreement & Lease Hearing',
+      lawyerName: user?.name || 'Adv. Rajesh Sharma',
+      lawyerId: user?._id || 'L-101',
+      clientName: 'Nishani Fernando',
+      clientId: 'U-503',
+      description: 'Subsidized Court Processing & Legal Counsel',
+      totalAmount: 180,
+      amountDue: 180,
+      dueDate: '2026-08-15',
+      status: 'Overdue',
+      paymentMethod: null,
+      paidAt: null,
+      transactionId: null
+    }
+  ];
+
+  const [fees, setFees] = useState(() => {
+    const saved = localStorage.getItem('lexora_fees');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { return defaultFeesData; }
+    }
+    return defaultFeesData;
+  });
+
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const saved = localStorage.getItem('lexora_fees');
+      if (saved) {
+        try { setFees(JSON.parse(saved)); } catch (e) {}
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  const [feeFilterStatus, setFeeFilterStatus] = useState('All');
+  const [feeSearchQuery, setFeeSearchQuery] = useState('');
+  const [selectedInvoiceFee, setSelectedInvoiceFee] = useState(null);
+
+  const handleSendReminder = (fee) => {
+    alert(`Fee Payment Reminder notification sent to client ${fee.clientName} for Case ${fee.caseId} (Amount Due: ₹${fee.amountDue}, Due Date: ${fee.dueDate}).`);
+  };
+
   // Clock Update
   useEffect(() => {
     const timer = setInterval(() => {
@@ -86,6 +171,63 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  const fetchConversations = async () => {
+    try {
+      const res = await axios.get('/messages/conversations');
+      if (res.data.success && Array.isArray(res.data.data)) {
+        const convs = res.data.data.map(c => ({
+          id: c.contact._id,
+          name: c.contact.name,
+          email: c.contact.email,
+          role: c.contact.role,
+          lastMessage: c.lastMessage,
+          unreadCount: c.unreadCount
+        }));
+        if (convs.length > 0) {
+          setClients(convs);
+        }
+      }
+    } catch (err) {
+      console.warn('Could not fetch conversations:', err.message);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      initSocket(user);
+      fetchConversations();
+
+      subscribeToMessages((newMsg) => {
+        setChatMessages((prev) => {
+          if (prev.some(m => m.id === newMsg._id || m.text === newMsg.text)) return prev;
+          return [...prev, {
+            id: newMsg._id,
+            recipient: newMsg.sender._id === user._id ? newMsg.receiver._id : newMsg.sender._id,
+            sender: newMsg.sender._id === user._id ? 'lawyer' : 'user',
+            text: newMsg.text,
+            time: new Date(newMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }];
+        });
+        fetchConversations();
+      });
+
+      axios.get('/messages')
+        .then(res => {
+          if (res.data.success && Array.isArray(res.data.data)) {
+            const msgs = res.data.data.map(m => ({
+              id: m._id,
+              recipient: m.sender._id === user._id ? m.receiver._id : m.sender._id,
+              sender: m.sender._id === user._id ? 'lawyer' : 'user',
+              text: m.text,
+              time: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }));
+            if (msgs.length > 0) setChatMessages(msgs);
+          }
+        })
+        .catch(err => console.warn('Could not load messages:', err.message));
+    }
+  }, [user]);
 
   const todayDate = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -218,18 +360,33 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
   };
 
   // Chat message send
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!typedMessage.trim()) return;
+
+    const textToSend = typedMessage;
+    const targetRecipientId = activeChatRecipient;
+
     const newMsg = {
       id: Date.now(),
-      recipient: activeChatRecipient,
+      recipient: targetRecipientId,
       sender: 'lawyer',
-      text: typedMessage,
+      text: textToSend,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       read: true
     };
-    setChatMessages([...chatMessages, newMsg]);
+    setChatMessages(prev => [...prev, newMsg]);
     setTypedMessage('');
+
+    if (targetRecipientId) {
+      try {
+        await axios.post('/messages', {
+          receiver: targetRecipientId,
+          text: textToSend
+        });
+      } catch (err) {
+        console.error('Failed to post lawyer reply to backend:', err.message);
+      }
+    }
   };
 
   // AI Assistant Query simulation
@@ -823,7 +980,13 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
 
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {chatMessages
-                .filter(m => m.recipient === activeChatRecipient)
+                .filter(m => 
+                  m.recipient === activeChatRecipient || 
+                  m.recipient === 'client-1' || 
+                  m.sender === 'user' || 
+                  m.sender === 'User' ||
+                  m.sender === 'applicant'
+                )
                 .map((msg) => (
                   <div key={msg.id} className={`flex flex-col ${msg.sender === 'lawyer' ? 'items-end' : 'items-start'}`}>
                     <div className={`max-w-[70%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed ${
@@ -850,6 +1013,200 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
               <button onClick={handleSendMessage} className="btn-primary p-2.5 rounded-xl shrink-0 shadow-sm">
                 <Send size={14} />
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── CLIENT FEES & PAYMENTS TAB (LAWYER VIEW) ── */}
+      {activeTab === 'fees' && (
+        <div className="space-y-6">
+          {/* Top Banner */}
+          <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-cyan-950 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border border-slate-700/50">
+            <div className="space-y-2 z-10">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-bold">
+                <CreditCard size={14} /> Advocate Chamber Revenue & Fee Escrow
+              </div>
+              <h2 className="text-2xl font-black tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
+                Client Fee Management & Payment Status
+              </h2>
+              <p className="text-slate-300 text-xs max-w-xl leading-relaxed">
+                Monitor client retainer fees, check payment receipts, track due dates, and dispatch payment reminders to clients.
+              </p>
+            </div>
+            <div className="flex gap-3 z-10 shrink-0">
+              <button 
+                onClick={() => alert('Exported client fee ledger to CSV format.')}
+                className="btn-secondary text-xs px-4 py-3 rounded-xl flex items-center gap-2 font-bold"
+              >
+                <Download size={14} /> Export Statement
+              </button>
+            </div>
+            <div className="absolute right-[-20px] bottom-[-30px] w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+          </div>
+
+          {/* Metrics Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-[var(--bg-card)] p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                <DollarSign size={24} />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Revenue Collected</p>
+                <p className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">
+                  ₹{fees.filter(f => f.status === 'Paid').reduce((acc, f) => acc + f.totalAmount, 0)}
+                </p>
+                <p className="text-[11px] text-emerald-500 font-medium mt-1">
+                  {fees.filter(f => f.status === 'Paid').length} paid client invoices
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-[var(--bg-card)] p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+                <Clock size={24} />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pending Client Fees</p>
+                <p className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">
+                  ₹{fees.filter(f => f.status !== 'Paid').reduce((acc, f) => acc + f.amountDue, 0)}
+                </p>
+                <p className="text-[11px] text-amber-500 font-medium mt-1">
+                  {fees.filter(f => f.status === 'Pending').length} pending client payments
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-[var(--bg-card)] p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0">
+                <AlertCircle size={24} />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Overdue Payments</p>
+                <p className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">
+                  {fees.filter(f => f.status === 'Overdue').length}
+                </p>
+                <p className="text-[11px] text-rose-500 font-medium mt-1">
+                  Requires fee payment reminder
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Client Fee Table Section */}
+          <div className="bg-[var(--bg-card)] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-3 text-slate-400" />
+                  <input 
+                    type="text" 
+                    placeholder="Search client or case ID..."
+                    value={feeSearchQuery}
+                    onChange={e => setFeeSearchQuery(e.target.value)}
+                    className="pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs outline-none text-slate-800 dark:text-white w-64"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl">
+                {['All', 'Paid', 'Pending', 'Overdue'].map(st => (
+                  <button
+                    key={st}
+                    onClick={() => setFeeFilterStatus(st)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                      feeFilterStatus === st 
+                        ? 'bg-white dark:bg-slate-800 text-cyan-600 dark:text-cyan-400 shadow-xs' 
+                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    {st}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* List of Client Fees */}
+            <div className="space-y-4">
+              {fees
+                .filter(f => feeFilterStatus === 'All' ? true : f.status === feeFilterStatus)
+                .filter(f => feeSearchQuery ? (f.clientName.toLowerCase().includes(feeSearchQuery.toLowerCase()) || f.caseId.toLowerCase().includes(feeSearchQuery.toLowerCase())) : true)
+                .map(fee => (
+                  <div 
+                    key={fee.id}
+                    className="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 hover:border-cyan-500/40 transition flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+                  >
+                    <div className="space-y-2 flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-cyan-600 to-blue-600 text-white font-bold text-xs flex items-center justify-center">
+                          {fee.clientName.charAt(0)}
+                        </div>
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                          {fee.clientName}
+                        </h4>
+                        <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold">
+                          {fee.caseId}
+                        </span>
+                        <span className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full flex items-center gap-1 ${
+                          fee.status === 'Paid'
+                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                            : fee.status === 'Overdue'
+                            ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+                            : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                        }`}>
+                          {fee.status === 'Paid' && <CheckCircle2 size={11} />}
+                          {fee.status === 'Overdue' && <AlertCircle size={11} />}
+                          {fee.status === 'Pending' && <Clock size={11} />}
+                          {fee.status === 'Paid' ? 'Fee Paid' : fee.status === 'Overdue' ? 'Payment Overdue' : 'Fee Pending'}
+                        </span>
+                      </div>
+                      
+                      <p className="text-xs text-slate-600 dark:text-slate-300">
+                        <strong>Case:</strong> {fee.caseTitle} • <strong>Service:</strong> {fee.description}
+                      </p>
+                      
+                      <div className="flex items-center gap-4 text-[11px] text-slate-400 flex-wrap">
+                        <span><strong>Payment Due Date:</strong> {fee.dueDate}</span>
+                        {fee.paidAt && (
+                          <>
+                            <span>•</span>
+                            <span className="text-emerald-500 font-medium"><strong>Paid On:</strong> {fee.paidAt}</span>
+                            <span>•</span>
+                            <span className="text-slate-400"><strong>Ref:</strong> {fee.transactionId}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 shrink-0 self-end md:self-center">
+                      <div className="text-right">
+                        <p className="text-xs text-slate-400 font-semibold">Total Fee</p>
+                        <p className="text-xl font-black text-slate-900 dark:text-white">₹{fee.totalAmount}</p>
+                        {fee.amountDue > 0 ? (
+                          <p className="text-[11px] text-rose-500 font-bold">Unpaid: ₹{fee.amountDue}</p>
+                        ) : (
+                          <p className="text-[11px] text-emerald-500 font-bold">Paid by Client</p>
+                        )}
+                      </div>
+
+                      {fee.status !== 'Paid' ? (
+                        <button
+                          onClick={() => handleSendReminder(fee)}
+                          className="btn-primary text-xs px-4 py-2.5 rounded-xl font-bold flex items-center gap-1.5 shadow-md hover:scale-105 transition"
+                        >
+                          <Bell size={14} /> Send Fee Reminder
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setSelectedInvoiceFee(fee)}
+                          className="btn-secondary text-xs px-3.5 py-2.5 rounded-xl font-bold flex items-center gap-1.5"
+                        >
+                          <Receipt size={14} /> View Invoice
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
             </div>
           </div>
         </div>
@@ -990,11 +1347,14 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
             )}
 
             {profileSubTab === 'preferences' && (
-              <div className="space-y-6 animate-fade-in max-w-xl">
+              <div className="space-y-6 animate-fade-in max-w-4xl">
                 <div>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">Theme & preferences settings</h4>
-                  <p className="text-xs text-slate-400">Adjust whitelists and enable notification preferences.</p>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">Portal Design & Accessibility Preferences</h4>
+                  <p className="text-xs text-slate-400">Configure visual themes, contrast modes, text size scaling, and workspace settings.</p>
                 </div>
+
+                {/* Embedded Design & Accessibility Customizer */}
+                <ThemeCustomizer />
 
                 <div className="flex items-center justify-between p-4 border rounded-2xl bg-slate-50 dark:bg-slate-900">
                   <div>
@@ -1216,6 +1576,68 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
             <button onClick={handleAiQuerySubmit} className="btn-primary bg-purple-600 hover:bg-purple-500 p-2 rounded-xl text-xs">
               Send
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── LAWYER CLIENT INVOICE MODAL ── */}
+      {selectedInvoiceFee && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 w-full max-w-md shadow-2xl p-6 relative space-y-5">
+            <button 
+              onClick={() => setSelectedInvoiceFee(null)}
+              className="absolute right-5 top-5 text-slate-400 hover:text-slate-600 dark:hover:text-white text-xl font-bold"
+            >
+              ×
+            </button>
+            <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div className="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-500 flex items-center justify-center">
+                <Receipt size={20} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Client Chamber Invoice</h3>
+                <p className="text-xs text-slate-400 font-mono">Ref: {selectedInvoiceFee.transactionId || selectedInvoiceFee.id}</p>
+              </div>
+            </div>
+
+            <div className="space-y-2 text-xs bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-100 dark:border-slate-850">
+              <div className="flex justify-between py-1 border-b border-slate-200/50 dark:border-slate-800">
+                <span className="text-slate-400">Client Name:</span>
+                <span className="font-bold text-slate-900 dark:text-white">{selectedInvoiceFee.clientName}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-200/50 dark:border-slate-800">
+                <span className="text-slate-400">Case Matter:</span>
+                <span className="font-bold text-slate-900 dark:text-white">{selectedInvoiceFee.caseId}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-200/50 dark:border-slate-800">
+                <span className="text-slate-400">Total Fee Charged:</span>
+                <span className="font-bold text-slate-900 dark:text-white">₹{selectedInvoiceFee.totalAmount}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-200/50 dark:border-slate-800">
+                <span className="text-slate-400">Payment Status:</span>
+                <span className="font-bold text-emerald-500">{selectedInvoiceFee.status}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-200/50 dark:border-slate-800">
+                <span className="text-slate-400">Paid On:</span>
+                <span className="font-bold text-slate-900 dark:text-white">{selectedInvoiceFee.paidAt || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between py-1">
+                <span className="text-slate-400">Gateway Method:</span>
+                <span className="font-bold text-slate-900 dark:text-white">{selectedInvoiceFee.paymentMethod || 'Pending Deposit'}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button 
+                onClick={() => {
+                  alert('Chamber Invoice copy exported as PDF.');
+                  setSelectedInvoiceFee(null);
+                }}
+                className="w-full btn-primary py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2"
+              >
+                <Download size={14} /> Download Copy
+              </button>
+            </div>
           </div>
         </div>
       )}

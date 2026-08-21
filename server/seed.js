@@ -15,6 +15,7 @@ const Court = require('./models/Court');
 const Courtroom = require('./models/Courtroom');
 const Judge = require('./models/Judge');
 const AuditLog = require('./models/AuditLog');
+const CaseParty = require('./models/CaseParty');
 
 dotenv.config();
 
@@ -36,6 +37,7 @@ const seed = async () => {
     await Courtroom.deleteMany();
     await Judge.deleteMany();
     await AuditLog.deleteMany();
+    await CaseParty.deleteMany();
 
     const passwordHash = await bcrypt.hash('Admin@1234', 10);
 
@@ -68,7 +70,7 @@ const seed = async () => {
     for (let i = 0; i < applicantNames.length; i++) {
       const u = await User.create({
         name: applicantNames[i],
-        email: `applicant${i+1}@sevenseas.com`,
+        email: i === 0 ? 'user@sevenseas.com' : `applicant${i+1}@sevenseas.com`,
         password: passwordHash,
         role: 'User',
         location: i % 2 === 0 ? 'Chennai' : 'Mumbai',
@@ -80,7 +82,7 @@ const seed = async () => {
     // 3. Create 20 Lawyers & Lawyer Profiles
     console.log('⚖️ Seeding 20 lawyer directories...');
     const lawyerNames = [
-      'Rajan Kumar', 'Aisha Verma', 'Siddharth Roy', 'Nidhi Sharma', 'Vikram Seth',
+      'Aisha Verma', 'Rajan Kumar', 'Siddharth Roy', 'Nidhi Sharma', 'Vikram Seth',
       'Kavita Rao', 'Amit Shah', 'Sneha Joshi', 'Deepak Johar', 'Priya Sen',
       'Arun Mehta', 'Meenakshi Iyer', 'Rajesh Patel', 'Divya Nair', 'Suresh Goel',
       'Anjali Deshmukh', 'Vijay Patil', 'Neha Gupta', 'Sanjay Mishra', 'Rohan Malhotra'
@@ -95,7 +97,7 @@ const seed = async () => {
     for (let i = 0; i < lawyerNames.length; i++) {
       const userL = await User.create({
         name: `Advocate ${lawyerNames[i]}`,
-        email: `lawyer${i+1}@sevenseas.com`,
+        email: i === 0 ? 'lawyer@sevenseas.com' : `lawyer${i+1}@sevenseas.com`,
         password: passwordHash,
         role: 'Lawyer',
         location: locations[i % locations.length],
@@ -174,9 +176,17 @@ const seed = async () => {
     ];
 
     const seededApps = [];
+    const opponentNames = [
+      'Suresh Kumar', 'Ramesh Sharma', 'Apex Construction Corp',
+      'Metropolitan Housing Board', 'Vikram Enterprise', 'Rajesh Gupta',
+      'National Transit Authority', 'Standard Credit Bank', 'Deepak Verma', 'Global Logistics Ltd'
+    ];
+
     for (let i = 0; i < 10; i++) {
       const applicant = applicantUsers[i % applicantUsers.length];
       const lawyer = lawyerRecords[i % lawyerRecords.length];
+      const oppLawyer = lawyerRecords[(i + 5) % lawyerRecords.length];
+      const oppName = opponentNames[i % opponentNames.length];
       
       const app = await Application.create({
         applicant: applicant._id,
@@ -186,8 +196,10 @@ const seed = async () => {
         court: courts[i % courts.length].name,
         location: applicant.location,
         urgency: i % 3 === 0 ? 'High' : (i % 3 === 1 ? 'Medium' : 'Low'),
-        status: appStatuses[i],
-        assignedLawyer: i >= 3 ? lawyer.userId : undefined,
+        status: i < 3 ? 'LawyerAssigned' : appStatuses[i],
+        assignedLawyer: lawyer.userId,
+        opposingLawyer: oppLawyer._id,
+        opponentName: oppName,
         occupation: i % 2 === 0 ? 'Clerk' : 'Mechanic',
         monthlyIncome: 15000 + i * 5000,
         verificationStatus: i >= 3 ? 'Verified' : (i === 7 ? 'Rejected' : 'Pending'),
@@ -196,6 +208,37 @@ const seed = async () => {
           { status: 'Under Review', note: 'Document auditing initiated.' }
         ]
       });
+
+      // Seed Applicant Side Case Party
+      await CaseParty.create({
+        partyId: `PRT-${1000 + (i * 2) + 1}`,
+        caseId: app._id,
+        userId: applicant._id,
+        fullName: applicant.name,
+        partyType: 'APPLICANT',
+        side: 'YOUR_SIDE',
+        phone: applicant.phone,
+        email: applicant.email,
+        address: '123 Legal Aid Row, District 4',
+        lawyerId: lawyer._id,
+        relationshipToCase: 'Primary Legal Aid Applicant'
+      });
+
+      // Seed Opposing Side Case Party
+      await CaseParty.create({
+        partyId: `PRT-${1000 + (i * 2) + 2}`,
+        caseId: app._id,
+        fullName: oppName,
+        partyType: 'OPPONENT',
+        side: 'OPPOSING_SIDE',
+        phone: '9876543210',
+        email: 'opponent@legal-notice.org',
+        address: '458 Commercial Sector, Avenue 9',
+        lawyerId: oppLawyer._id,
+        organization: i % 2 === 0 ? 'Individual Respondent' : 'Corporate Respondent',
+        relationshipToCase: 'Opposing Defendant Entity'
+      });
+
       seededApps.push(app);
     }
 
@@ -247,7 +290,7 @@ const seed = async () => {
     console.log('Credentials (all use password: Admin@1234)');
     console.log(`  Admin        → ${adminUser.email}`);
     console.log(`  Applicant #1 → ${applicantUsers[0].email}`);
-    console.log(`  Lawyer #1    → lawyer1@sevenseas.com`);
+    console.log(`  Lawyer #1    → lawyer@sevenseas.com`);
     console.log('─────────────────────────────────────────');
 
     if (require.main === module) {

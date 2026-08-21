@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import axios from '../api/axios';
 import { AuthContext } from '../contexts/AuthContext';
 import { ThemeContext } from '../contexts/ThemeContext';
+import ThemeCustomizer from '../components/ThemeCustomizer';
 import { motion } from 'framer-motion';
+import archangelRaguelImg from '../assets/archangel-raguel.png';
 import {
   Users,
   Scale,
@@ -72,6 +74,7 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
   // Central System Logs state
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [profileSubTab, setProfileSubTab] = useState('personal'); // 'personal' | 'security' | 'database' | 'api'
+  const [reportsTimeRange, setReportsTimeRange] = useState('30days'); // '7days' | '30days' | 'ytd'
 
   // Clock Update
   useEffect(() => {
@@ -285,9 +288,19 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
     <div className="space-y-6 animate-fade-in font-sans pb-10 text-slate-800 dark:text-slate-100">
       
       {/* ── TOP SECTION: WELCOME & META ── */}
-      <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-1.5 rounded-md bg-purple-50 dark:bg-purple-950/20 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-purple-600">
+      <div 
+        className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-6 overflow-hidden relative"
+        style={{ borderTop: '3px solid #AEA668' }}
+      >
+        <div className="flex-1 relative z-10">
+          <div 
+            className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider border"
+            style={{ 
+              color: '#AEA668', 
+              borderColor: 'rgba(174, 166, 104, 0.3)', 
+              backgroundColor: 'rgba(174, 166, 104, 0.08)' 
+            }}
+          >
             👑 SUPER ADMIN SYSTEM CONTROL
           </div>
           <h2 className="text-3xl font-extrabold text-slate-800 dark:text-white mt-1.5" style={{ fontFamily: 'var(--font-display)' }}>
@@ -296,13 +309,30 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
           <p className="text-xs text-slate-450 font-bold mt-1">
             Last Login: Today at {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} · System Status: Healthy
           </p>
-          <p className="text-sm font-semibold tracking-wide text-slate-500 dark:text-slate-400 mt-3.5 max-w-2xl italic leading-relaxed" style={{ fontFamily: "'Playfair Display', serif", color: 'var(--gold-500)' }}>
-            “Justice is the constant and perpetual will to give to each their due. True governance is built upon the foundation of swift, impartial, and transparent rule of law.”
-          </p>
         </div>
-        <div className="text-left md:text-right">
-          <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{todayDate}</p>
-          <p className="text-xs text-slate-400 font-semibold mt-0.5">{currentTime}</p>
+        
+        <div className="flex items-center gap-4 relative z-10 shrink-0">
+          <div className="text-left md:text-right">
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{todayDate}</p>
+            <p className="text-xs text-slate-400 font-semibold mt-0.5">{currentTime}</p>
+          </div>
+          <div className="h-20 w-20 rounded-xl overflow-hidden border border-[#AEA668]/20 bg-slate-50 dark:bg-slate-900/50 p-1 flex items-center justify-center shrink-0">
+            <img 
+              src={archangelRaguelImg} 
+              alt="Archangel Raguel - Angel of Justice" 
+              className="h-full w-full object-cover rounded-lg"
+              title="Archangel Raguel, Angel of Justice and Harmony"
+            />
+          </div>
+        </div>
+
+        {/* Subtle background decorative watermark */}
+        <div className="absolute right-0 bottom-0 top-0 w-1/3 opacity-[0.04] pointer-events-none select-none overflow-hidden hidden md:block">
+          <img 
+            src={archangelRaguelImg} 
+            alt="" 
+            className="h-full w-full object-cover scale-150 origin-bottom-right"
+          />
         </div>
       </div>
 
@@ -310,33 +340,41 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
       {activeTab === 'dashboard' && (
         <div className="space-y-6 animate-fade-in stagger">
 
-          {/* ── QUICK ACTIONS TOOLBAR ── */}
+          {/* ── QUICK ACTIONS FLOATING PANEL ── */}
           <div
-            className="flex flex-wrap gap-2 p-4 rounded-2xl"
-            style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}
+            className="flex flex-wrap gap-3 p-4 reports-glass-card rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm relative overflow-hidden"
           >
-            <button
-              onClick={() => setShowScheduleHearingModal(true)}
-              className="btn-primary btn-sm flex items-center gap-1.5"
-            >
-              <Calendar size={13} /> Schedule Hearing
-            </button>
-            <button
-              onClick={() => setShowCreateUserModal(true)}
-              className="btn-secondary btn-sm flex items-center gap-1.5"
-            >
-              <UserPlus size={13} /> Create User
-            </button>
-            <button
-              onClick={() => navigate('/dashboard/ai-recommend')}
-              className="btn-ai btn-sm flex items-center gap-1.5"
-            >
-              <Sparkles size={13} /> AI Recommendations
-            </button>
-            <div className="flex-1" />
-            <span className="text-[10px] text-[var(--text-muted)] font-medium self-center">
-              {new Date().toLocaleDateString('en-GB', { weekday:'short', day:'2-digit', month:'short', year:'numeric' })}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-[#aea668] animate-pulse" />
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Quick Command Desk</span>
+            </div>
+
+            <div className="flex flex-wrap gap-2 md:ml-auto">
+              <button
+                onClick={() => setShowScheduleHearingModal(true)}
+                className="btn-primary btn-sm flex items-center gap-1.5 shadow-md shadow-blue-500/10"
+              >
+                <Calendar size={13} /> Schedule Hearing
+              </button>
+              <button
+                onClick={() => setShowCreateUserModal(true)}
+                className="btn-secondary btn-sm flex items-center gap-1.5"
+              >
+                <UserPlus size={13} /> Create User
+              </button>
+              <button
+                onClick={() => navigate('/dashboard/ai-recommend')}
+                className="btn-ai btn-sm flex items-center gap-1.5"
+              >
+                <Sparkles size={13} /> AI Match Engine
+              </button>
+            </div>
+            
+            <div className="w-full md:w-auto border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800 pt-2 md:pt-0 md:pl-4 flex items-center">
+              <span className="text-[10px] text-slate-400 font-extrabold tracking-wider">
+                {new Date().toLocaleDateString('en-GB', { weekday:'short', day:'2-digit', month:'short', year:'numeric' })}
+              </span>
+            </div>
           </div>
 
           {/* ── KPI STAT CARDS ── */}
@@ -346,25 +384,25 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
                 label: 'Active Applicants', value: applicants.length,
                 sub: '+2 this week', trend: '+',
                 color: '#2563EB', bg: 'rgba(37,99,235,0.08)',
-                icon: Users, accentClass: 'card-accent-blue',
+                icon: Users, glowClass: 'glow-card-blue', borderCol: '#2563eb'
               },
               {
                 label: 'Verified Advocates', value: lawyers.filter(l => l.verification === 'Verified').length,
                 sub: 'Bar Council verified', trend: null,
                 color: '#16A34A', bg: 'rgba(22,163,74,0.08)',
-                icon: Scale, accentClass: 'card-accent-green',
+                icon: Scale, glowClass: 'glow-card-green', borderCol: '#16A34A'
               },
               {
                 label: 'Pending Reviews', value: applications.filter(a => a.status === 'Submitted').length,
                 sub: 'Eligibility checks', trend: '!',
                 color: '#B69D74', bg: 'rgba(182,157,116,0.10)',
-                icon: ShieldAlert, accentClass: 'card-accent-gold',
+                icon: ShieldAlert, glowClass: 'glow-card-gold', borderCol: '#B69D74'
               },
               {
                 label: 'Active Court Cases', value: cases.length,
                 sub: 'Ongoing litigations', trend: null,
                 color: '#7C3AED', bg: 'rgba(124,58,237,0.08)',
-                icon: FolderOpen, accentClass: 'card-accent-purple',
+                icon: FolderOpen, glowClass: 'glow-card-purple', borderCol: '#5009caff'
               },
             ].map((stat, i) => {
               const Icon = stat.icon;
@@ -375,14 +413,15 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
                   transition={{ duration: 0.4, delay: i * 0.05 }}
                   whileHover={{ y: -4 }}
                   key={i} 
-                  className={`stat-card glass-card ${stat.accentClass}`}
+                  className={`reports-glass-card p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm transition-all duration-300 ${stat.glowClass}`}
+                  style={{ borderBottom: `3px solid ${stat.borderCol}` }}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <p className="section-label">{stat.label}</p>
                       <p
-                        className="text-[2.2rem] font-black leading-none mt-2 tracking-tight"
-                        style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+                        className="text-[2.2rem] font-black leading-none mt-2 tracking-tight text-slate-800 dark:text-white"
+                        style={{ fontFamily: 'var(--font-display)' }}
                       >
                         {stat.value}
                       </p>
@@ -394,16 +433,11 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
                       <Icon size={17} />
                     </div>
                   </div>
-                  <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                    <p className="text-[11px] text-[var(--text-muted)] font-medium">{stat.sub}</p>
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-200/50 dark:border-slate-800/50">
+                    <p className="text-[11px] text-slate-400 font-semibold">{stat.sub}</p>
                     {stat.trend && (
                       <span
-                        className="text-[9px] font-extrabold tracking-wider px-2 py-0.5 rounded-full"
-                        style={{
-                          background: stat.trend === '+' ? 'rgba(34,197,94,0.10)' : 'rgba(245,158,11,0.10)',
-                          color: stat.trend === '+' ? '#16A34A' : '#D97706',
-                          border: stat.trend === '+' ? '1px solid rgba(34,197,94,0.2)' : '1px solid rgba(245,158,11,0.2)',
-                        }}
+                        className="text-[9px] font-extrabold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
                       >
                         {stat.trend === '+' ? '↑ Growing' : '⚑ Action'}
                       </span>
@@ -419,18 +453,17 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
 
             {/* Case Distribution Chart */}
             <div
-              className="lg:col-span-2 rounded-2xl p-6 space-y-5"
-              style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}
+              className="lg:col-span-2 reports-glass-card p-6 space-y-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm"
             >
               <div className="flex items-center justify-between">
                 <div>
                   <h3
-                    className="text-sm font-bold"
-                    style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+                    className="text-sm font-bold text-slate-800 dark:text-white"
+                    style={{ fontFamily: 'var(--font-display)' }}
                   >
                     Monthly Cases Distribution
                   </h3>
-                  <p className="text-[11px] text-[var(--text-muted)] mt-0.5">Court utilization by case type · Last 30 days</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Court utilization by case type · Last 30 days</p>
                 </div>
                 <span className="badge badge-blue badge-dot">Live</span>
               </div>
@@ -473,8 +506,8 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
                     <g key={i}>
                       {/* Shadow */}
                       <rect x={bar.x + 2} y={89 - bar.h + 3} width="34" height={bar.h + 5} rx="5" fill={bar.textCol} opacity="0.08" />
-                      {/* Bar */}
-                      <rect x={bar.x} y={89 - bar.h} width="34" height={bar.h} rx="5" fill={bar.color} opacity="0.85" />
+                      {/* Bar with animation */}
+                      <rect x={bar.x} y={89 - bar.h} width="34" height={bar.h} rx="5" fill={bar.color} opacity="0.85" className="animate-grow-bar" style={{ transformOrigin: 'bottom' }} />
                       {/* Top highlight */}
                       <rect x={bar.x} y={89 - bar.h} width="34" height="4" rx="2" fill="white" opacity="0.15" />
                       {/* Value label */}
@@ -507,30 +540,26 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
 
             {/* Awaiting Audits Queue */}
             <div
-              className="rounded-2xl p-5 flex flex-col"
-              style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}
+              className="reports-glass-card p-5 flex flex-col rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm"
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xs font-bold text-[var(--text-primary)]">Awaiting Audits</h3>
+                <h3 className="text-xs font-bold text-slate-800 dark:text-white">Awaiting Audits</h3>
                 <span className="badge badge-gold">{applications.filter(a => a.status === 'Submitted' || a.status === 'Under Review').length} Pending</span>
               </div>
 
               <div className="space-y-2 flex-1">
-                {applications.filter(a => a.status === 'Submitted' || a.status === 'Under Review').map(app => (
+                {applications.filter(a => a.status === 'Submitted' || a.status === 'Under Review').slice(0, 3).map(app => (
                   <div
                     key={app.id}
-                    className="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all"
-                    style={{ background: 'var(--bg-app)', border: '1px solid var(--border-subtle)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-card-hover)'; e.currentTarget.style.borderColor = 'var(--border-color)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--bg-app)'; e.currentTarget.style.borderColor = 'var(--border-subtle)'; }}
+                    className="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all hover:bg-slate-100/50 dark:hover:bg-slate-900/50 border border-transparent hover:border-slate-200 dark:hover:border-slate-800"
                     onClick={() => { setSelectedApplication(app); navigate('/dashboard/applications'); }}
                   >
                     <div className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0 text-xs font-black text-white" style={{ background: 'linear-gradient(135deg, #1A2236, #2d3a55)' }}>
                       {app.applicant.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-[var(--text-primary)] truncate">{app.applicant}</p>
-                      <p className="text-[10px] text-[var(--text-muted)] truncate mt-0.5">{app.caseType} · {app.income}</p>
+                      <p className="text-xs font-semibold text-slate-800 dark:text-white truncate">{app.applicant}</p>
+                      <p className="text-[10px] text-slate-400 truncate mt-0.5">{app.caseType} · {app.income}</p>
                     </div>
                     <span
                       className={`badge text-[8.5px] shrink-0 ${app.status === 'Submitted' ? 'badge-gold' : 'badge-blue'}`}
@@ -550,6 +579,39 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
             </div>
 
           </div>
+
+          {/* ── LIVE ACTIVITY LOGS ROW ── */}
+          <div className="reports-glass-card p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                  <span>⚡</span> Live Platform Action logs
+                </h4>
+                <p className="text-xs text-slate-400 mt-0.5">Real-time state transitions recorded by portal tasks</p>
+              </div>
+              <span className="text-[10px] text-slate-400 font-extrabold tracking-widest uppercase">STREAM ONLINE</span>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              {[
+                { log: 'AI Match suggested Aisha Verma for Land boundary boundary survey files.', time: '2 mins ago', icon: '🤖', badge: 'AI Engine' },
+                { log: 'Hearing scheduled for CASE801 in Courtroom Hall 3 by Registrar.', time: '15 mins ago', icon: '📅', badge: 'Scheduler' },
+                { log: 'New applicant registration verified for Priya Nair.', time: '40 mins ago', icon: '👤', badge: 'Auditor' }
+              ].map((item, idx) => (
+                <div key={idx} className="flex gap-3 p-3.5 rounded-2xl bg-slate-50/50 dark:bg-slate-900/30 border border-slate-200/40 dark:border-slate-800/40 hover:-translate-y-0.5 transition-all">
+                  <span className="text-lg">{item.icon}</span>
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center gap-2">
+                      <span className="text-[9px] font-extrabold tracking-wider bg-blue-500/10 text-blue-600 dark:text-blue-450 px-1.5 py-0.5 rounded-md">{item.badge}</span>
+                      <span className="text-[9px] text-slate-400 font-semibold">{item.time}</span>
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-350 leading-relaxed font-semibold">{item.log}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
         </div>
       )}
 
@@ -973,12 +1035,14 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
         </div>
       )}
 
+
+
       {/* ── 8. REPORTS & ANALYTICS TAB ── */}
       {activeTab === 'analytics' && (
         <div className="space-y-6 animate-fade-in">
           
           {/* Header section with Purple Icon and Refresh Button */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 reports-glass-card p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm relative overflow-hidden">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 bg-[#7c3aed] text-white rounded-xl flex items-center justify-center shadow-md shadow-purple-500/10 shrink-0">
                 <BarChart2 size={20} />
@@ -993,26 +1057,52 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
               </div>
             </div>
 
-            <button
-              onClick={() => alert('Refreshing platform diagnostic telemetry...')}
-              className="bg-gradient-to-r from-[#6366f1] via-[#a855f7] to-[#ec4899] hover:opacity-95 text-white text-xs font-bold px-5 py-2.5 rounded-full flex items-center gap-2 shadow-lg shadow-purple-500/10 active:scale-95 transition-all self-start sm:self-auto"
-            >
-              <RefreshCw size={13} className="animate-spin" style={{ animationDuration: '4s' }} />
-              <span>Refresh Diagnostics</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Time Range Chips */}
+              <div className="flex bg-slate-100/85 dark:bg-slate-900/50 p-1.5 rounded-full border border-slate-200/50 dark:border-slate-800/80">
+                {[
+                  { id: '7days', label: '7 Days' },
+                  { id: '30days', label: '30 Days' },
+                  { id: 'ytd', label: 'YTD' }
+                ].map(chip => (
+                  <button
+                    key={chip.id}
+                    onClick={() => setReportsTimeRange(chip.id)}
+                    className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
+                      reportsTimeRange === chip.id
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
+                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-350'
+                    }`}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => alert('Refreshing platform diagnostic telemetry...')}
+                className="btn-neon-glow text-white text-xs font-bold px-5 py-2.5 rounded-full flex items-center gap-2 self-start sm:self-auto"
+              >
+                <RefreshCw size={13} className="animate-spin" style={{ animationDuration: '4s' }} />
+                <span>Refresh Diagnostics</span>
+              </button>
+            </div>
           </div>
 
           {/* Core charts grid */}
           <div className="grid gap-6 lg:grid-cols-3">
             
             {/* Daily Operational Activity (Wave Chart) */}
-            <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm lg:col-span-2 space-y-4">
+            <div className="reports-glass-card lg:col-span-2 p-6 space-y-4 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>📈</span> Daily Operational Activity
-                </h4>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>📈</span> Daily Operational Activity
+                  </h4>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Vite + React live workspace telemetry load tracker</p>
+                </div>
                 <span className="text-[9px] font-extrabold bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300 px-2.5 py-1 rounded-md tracking-wider">
-                  LATEST 7 CYCLES
+                  {reportsTimeRange === '7days' ? 'LATEST 7 DAYS' : reportsTimeRange === '30days' ? 'LATEST 30 DAYS' : 'YEAR-TO-DATE'}
                 </span>
               </div>
 
@@ -1025,7 +1115,9 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
                     return (
                       <g key={yVal} className="opacity-40">
                         <line x1="40" y1={yPos} x2="480" y2={yPos} stroke="var(--border-color, #e2e8f0)" strokeWidth="0.5" strokeDasharray="3 3" />
-                        <text x="25" y={yPos + 3} className="text-[9px] fill-slate-400 font-bold" textAnchor="end">{yVal}</text>
+                        <text x="25" y={yPos + 3} className="text-[9px] fill-slate-400 font-bold" textAnchor="end">
+                          {reportsTimeRange === 'ytd' ? yVal * 15 : yVal}
+                        </text>
                       </g>
                     );
                   })}
@@ -1059,10 +1151,19 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
                     strokeWidth="3.5"
                     strokeLinecap="round"
                     filter="url(#neonGlow)"
+                    className="wave-path-animated"
                   />
 
                   {/* Circle nodes at data points with value labels */}
-                  {[
+                  {(reportsTimeRange === '7days' ? [
+                    { x: 40, y: 100, val: 6 },
+                    { x: 113, y: 120, val: 4 },
+                    { x: 186, y: 140, val: 2 },
+                    { x: 259, y: 130, val: 3 },
+                    { x: 332, y: 110, val: 5 },
+                    { x: 405, y: 120, val: 4 },
+                    { x: 480, y: 80, val: 8 }
+                  ] : reportsTimeRange === '30days' ? [
                     { x: 40, y: 50, val: 10 },
                     { x: 113, y: 30, val: 12 },
                     { x: 186, y: 150, val: 2 },
@@ -1070,7 +1171,15 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
                     { x: 332, y: 90, val: 7 },
                     { x: 405, y: 110, val: 5 },
                     { x: 480, y: 90, val: 7 }
-                  ].map((pt, idx) => (
+                  ] : [
+                    { x: 40, y: 70, val: 120 },
+                    { x: 113, y: 50, val: 145 },
+                    { x: 186, y: 110, val: 80 },
+                    { x: 259, y: 100, val: 95 },
+                    { x: 332, y: 80, val: 110 },
+                    { x: 405, y: 90, val: 105 },
+                    { x: 480, y: 60, val: 130 }
+                  ]).map((pt, idx) => (
                     <g key={idx}>
                       {/* Outer pulse glow */}
                       <circle cx={pt.x} cy={pt.y} r="6" fill="#3b82f6" opacity="0.35" />
@@ -1101,15 +1210,129 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
               </div>
             </div>
 
+            {/* Case Resolutions & Outcomes (Pie Chart) */}
+            <div className="reports-glass-card p-6 flex flex-col justify-between rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm relative">
+              <div>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>🍕</span> Case Resolutions
+                </h4>
+                <p className="text-[11px] text-slate-400 mt-0.5">Outcomes distribution by type</p>
+              </div>
+
+              {/* Dynamic Native SVG Pie Chart */}
+              <div className="flex justify-center items-center py-4 relative">
+                <svg viewBox="0 0 100 100" className="w-36 h-36 animate-pie">
+                  {/* Segment 1: Judgment (40%) - Blue */}
+                  <path d="M 50 50 L 26.48 82.36 A 40 40 0 0 1 50 10 Z" fill="#3b82f6" className="pie-segment" onClick={() => alert('Judgments represent 40% of cases.')} />
+                  
+                  {/* Segment 2: Mediation (35%) - Green */}
+                  <path d="M 50 50 L 90 50 A 40 40 0 0 1 26.48 82.36 Z" fill="#10b981" className="pie-segment" onClick={() => alert('Mediation represents 35% of cases.')} />
+
+                  {/* Segment 3: Settlement (15%) - Gold */}
+                  <path d="M 50 50 L 50 10 A 40 40 0 0 1 82.36 26.48 Z" fill="#b69d74" className="pie-segment" onClick={() => alert('Settlements represent 15% of cases.')} />
+
+                  {/* Segment 4: Dismissed (10%) - Pink */}
+                  <path d="M 50 50 L 82.36 26.48 A 40 40 0 0 1 90 50 Z" fill="#ec4899" className="pie-segment" onClick={() => alert('Dismissed cases represent 10% of cases.')} />
+                </svg>
+              </div>
+
+              {/* Legend with Dynamic Values */}
+              <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-400 font-bold border-t pt-3">
+                <div className="flex items-center gap-1.5 justify-center">
+                  <span className="h-2 w-2 rounded-full bg-[#3b82f6]" />
+                  <span>Judgment ({reportsTimeRange === '7days' ? '10' : reportsTimeRange === '30days' ? '40' : '480'})</span>
+                </div>
+                <div className="flex items-center gap-1.5 justify-center">
+                  <span className="h-2 w-2 rounded-full bg-[#10b981]" />
+                  <span>Mediation ({reportsTimeRange === '7days' ? '8' : reportsTimeRange === '30days' ? '35' : '420'})</span>
+                </div>
+                <div className="flex items-center gap-1.5 justify-center">
+                  <span className="h-2 w-2 rounded-full bg-[#b69d74]" />
+                  <span>Settlement ({reportsTimeRange === '7days' ? '4' : reportsTimeRange === '30days' ? '15' : '180'})</span>
+                </div>
+                <div className="flex items-center gap-1.5 justify-center">
+                  <span className="h-2 w-2 rounded-full bg-[#ec4899]" />
+                  <span>Dismissed ({reportsTimeRange === '7days' ? '1' : reportsTimeRange === '30days' ? '10' : '120'})</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Second Row: Funding Grants disbursements & Task Distribution */}
+          <div className="grid gap-6 lg:grid-cols-3">
+            
+            {/* Grants & Funding utilization Area Chart */}
+            <div className="reports-glass-card lg:col-span-2 p-6 space-y-4 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>💵</span> Legal Aid Grants Allocation
+                  </h4>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Budget disbursements across active civic files (LKR Millions)</p>
+                </div>
+                <span className="badge badge-emerald">Live Budget Tracker</span>
+              </div>
+
+              {/* Area SVG Chart */}
+              <div className="relative pt-4">
+                <svg viewBox="0 0 500 150" className="w-full">
+                  <defs>
+                    <linearGradient id="purpleGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#7c3aed" stopOpacity="0.3" />
+                      <stop offset="100%" stopColor="#7c3aed" stopOpacity="0.0" />
+                    </linearGradient>
+                  </defs>
+
+                  {/* Grid Lines */}
+                  {[0, 1, 2, 3].map((y, idx) => (
+                    <line key={idx} x1="40" y1={30 + y * 30} x2="480" y2={30 + y * 30} stroke="var(--border-color, #e2e8f0)" strokeWidth="0.5" strokeDasharray="3 3" />
+                  ))}
+
+                  {/* Filled Area */}
+                  <path
+                    d="M 40,110 C 120,80 200,100 280,50 C 360,60 420,30 480,20 L 480,140 L 40,140 Z"
+                    fill="url(#purpleGrad)"
+                  />
+
+                  {/* Funding Path */}
+                  <path
+                    d="M 40,110 C 120,80 200,100 280,50 C 360,60 420,30 480,20"
+                    fill="none"
+                    stroke="#7c3aed"
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                    className="wave-path-animated"
+                  />
+
+                  {/* Data Labels */}
+                  {[
+                    { label: 'Jan', x: 40, y: 110, val: '2.5M' },
+                    { label: 'Feb', x: 120, y: 80, val: '3.8M' },
+                    { label: 'Mar', x: 200, y: 100, val: '3.0M' },
+                    { label: 'Apr', x: 280, y: 50, val: '5.2M' },
+                    { label: 'May', x: 360, y: 60, val: '4.8M' },
+                    { label: 'Jun', x: 480, y: 20, val: '6.4M' }
+                  ].map((lbl, idx) => (
+                    <g key={idx}>
+                      <circle cx={lbl.x} cy={lbl.y} r="3.5" fill="#ffffff" stroke="#7c3aed" strokeWidth="1.5" />
+                      <text x={lbl.x} y={lbl.y - 8} textAnchor="middle" className="text-[8px] fill-[#7c3aed] font-extrabold">{lbl.val}</text>
+                      <text x={lbl.x} y="142" textAnchor="middle" className="text-[9px] fill-slate-400 font-bold">{lbl.label}</text>
+                    </g>
+                  ))}
+                </svg>
+              </div>
+            </div>
+
             {/* Task Distribution (Donut Chart) */}
-            <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm flex flex-col justify-between">
+            <div className="reports-glass-card p-6 flex flex-col justify-between rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
               <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <span>📋</span> Task Distribution
               </h4>
 
               {/* Donut Chart SVG */}
               <div className="flex justify-center items-center py-6 relative">
-                <svg viewBox="0 0 100 100" className="w-36 h-36">
+                <svg viewBox="0 0 100 100" className="w-36 h-36 animate-donut">
                   {/* Segment Grey (Backlog): 12% */}
                   <circle cx="50" cy="50" r="38" fill="none" stroke="#94a3b8" strokeWidth="9" strokeDasharray="28 240" strokeDashoffset="0" />
                   
@@ -1147,11 +1370,11 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
 
           </div>
 
-          {/* Bottom row: Resource Priority & Workflow momentum + logins card */}
+          {/* Bottom row: Resource Priority & Workflow momentum + telemetry logs */}
           <div className="grid gap-6 md:grid-cols-3">
             
             {/* Resource Priority (Vertical Bar charts) */}
-            <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-4">
+            <div className="reports-glass-card p-6 space-y-4 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
               <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <span>🎯</span> Resource Priority
               </h4>
@@ -1164,7 +1387,7 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
                 ].map((bar, i) => (
                   <div key={i} className="flex flex-col items-center gap-1 w-1/3 relative group">
                     <span className="text-[8px] font-extrabold text-[#1F2839] dark:text-slate-350 mb-0.5">{bar.val}%</span>
-                    <div className="w-6 rounded-t-lg transition-all hover:scale-110" style={{ height: `${bar.val * 0.8}px`, backgroundColor: bar.color }} />
+                    <div className="w-6 rounded-t-lg transition-all hover:scale-110 animate-grow-bar" style={{ height: `${bar.val * 0.8}px`, backgroundColor: bar.color }} />
                     <span className="text-[8px] font-bold text-slate-400 mt-1">{bar.label}</span>
                   </div>
                 ))}
@@ -1172,7 +1395,7 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
             </div>
 
             {/* Workflow Momentum */}
-            <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm md:col-span-2 flex flex-col md:flex-row justify-between items-stretch gap-6 relative overflow-hidden">
+            <div className="reports-glass-card md:col-span-2 flex flex-col md:flex-row justify-between items-stretch gap-6 relative overflow-hidden p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
               <div className="flex-1 space-y-4">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <span>🚀</span> Workflow Momentum
@@ -1185,7 +1408,7 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
                       <span className="text-blue-500">84%</span>
                     </div>
                     <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full">
-                      <div className="h-full bg-blue-500 rounded-full" style={{ width: '84%' }} />
+                      <div className="h-full bg-blue-500 rounded-full animate-progress-bar" style={{ width: '84%' }} />
                     </div>
                   </div>
 
@@ -1195,7 +1418,7 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
                       <span className="text-[#B69D74]">92%</span>
                     </div>
                     <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full">
-                      <div className="h-full bg-[#B69D74] rounded-full" style={{ width: '92%' }} />
+                      <div className="h-full bg-[#B69D74] rounded-full animate-progress-bar" style={{ width: '92%' }} />
                     </div>
                   </div>
 
@@ -1205,22 +1428,38 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
                       <span className="text-emerald-500">75%</span>
                     </div>
                     <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full">
-                      <div className="h-full bg-emerald-500 rounded-full" style={{ width: '75%' }} />
+                      <div className="h-full bg-emerald-500 rounded-full animate-progress-bar" style={{ width: '75%' }} />
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Gradient card DAILY LOGINS with Sparkle Overlay */}
-              <div className="w-full md:w-60 bg-gradient-to-tr from-[#6366f1] via-[#4f46e5] to-[#7c3aed] text-white p-5 rounded-2xl flex flex-col justify-between relative shadow-lg">
+              {/* Platform Telemetry Load card with logins & latency */}
+              <div className="w-full md:w-60 bg-gradient-to-tr from-[#6366f1] via-[#4f46e5] to-[#7c3aed] text-white p-5 rounded-2xl flex flex-col justify-between relative shadow-lg hover:shadow-indigo-500/30 transition-all duration-300 hover:-translate-y-1">
                 <div>
-                  <span className="text-[9px] font-extrabold tracking-widest text-indigo-200 uppercase">TELEMETRY</span>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[9px] font-extrabold tracking-widest text-indigo-200 uppercase">SYS TELEMETRY</span>
+                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" title="Database status online" />
+                  </div>
                   <h4 className="text-lg font-black mt-1" style={{ fontFamily: 'var(--font-display)' }}>DAILY LOGINS</h4>
                 </div>
                 
-                <div className="flex items-baseline gap-1.5 mt-4">
-                  <p className="text-3xl font-black">142</p>
-                  <span className="text-[10px] text-emerald-300 font-bold">↑ 12% today</span>
+                <div className="my-2">
+                  <div className="flex justify-between text-[9px] text-indigo-150 font-bold border-b border-indigo-500/30 pb-1">
+                    <span>Database Latency</span>
+                    <span>12ms</span>
+                  </div>
+                  <div className="flex justify-between text-[9px] text-indigo-150 font-bold border-b border-indigo-500/30 py-1">
+                    <span>API Resp Time</span>
+                    <span>34ms</span>
+                  </div>
+                </div>
+
+                <div className="flex items-baseline gap-1.5">
+                  <p className="text-3xl font-black">
+                    {reportsTimeRange === '7days' ? '42' : reportsTimeRange === '30days' ? '142' : '1,842'}
+                  </p>
+                  <span className="text-[10px] text-emerald-300 font-bold">Active users</span>
                 </div>
 
                 {/* Violet floating star overlay button */}
@@ -1230,6 +1469,72 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
               </div>
             </div>
 
+          </div>
+
+          {/* Recent Reports & Telemetry Audits Table */}
+          <div className="reports-glass-card p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4 animate-fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>📄</span> Recent Generated Reports
+                </h4>
+                <p className="text-xs text-slate-400 mt-0.5">Audit reports ready for system configuration diagnostics.</p>
+              </div>
+              <button 
+                onClick={() => alert('Compiling all recent report logs to Excel format...')}
+                className="btn-secondary btn-xs flex items-center gap-1.5"
+              >
+                <FileSpreadsheet size={13} /> Export Logs
+              </button>
+            </div>
+
+            <div className="overflow-x-auto rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
+              <table className="premium-table">
+                <thead>
+                  <tr className="bg-slate-50/50 dark:bg-slate-950/20">
+                    <th>Report ID</th>
+                    <th>Report Type</th>
+                    <th>Generated By</th>
+                    <th>Target Period</th>
+                    <th>File Size</th>
+                    <th>Audit Status</th>
+                    <th className="text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { id: 'REP-2026-004', type: 'Advocate Performance Audit', user: 'Super Admin', date: 'Aug 2026', size: '2.4 MB', status: 'Verified' },
+                    { id: 'REP-2026-003', type: 'Civil Court Utilization', user: 'Court Staff', date: 'Jul 2026', size: '1.8 MB', status: 'Verified' },
+                    { id: 'REP-2026-002', type: 'Legal Aid Budget Allocation', user: 'Super Admin', date: 'Jul 2026', size: '3.1 MB', status: 'Pending Review' },
+                    { id: 'REP-2026-001', type: 'AI Recommend Match Accuracy Log', user: 'System Task', date: 'Jun 2026', size: '940 KB', status: 'Archived' }
+                  ].map((rep, idx) => (
+                    <tr key={idx} className="premium-table-row">
+                      <td><span className="font-mono text-xs font-bold text-slate-650 dark:text-slate-350">{rep.id}</span></td>
+                      <td className="font-bold text-slate-800 dark:text-white">{rep.type}</td>
+                      <td className="text-slate-600 dark:text-slate-400 font-semibold">{rep.user}</td>
+                      <td>{rep.date}</td>
+                      <td className="font-mono text-xs text-slate-500">{rep.size}</td>
+                      <td>
+                        <span className={`badge ${
+                          rep.status === 'Verified' ? 'badge-green' :
+                          rep.status === 'Pending Review' ? 'badge-gold' : 'badge-slate'
+                        }`}>
+                          {rep.status}
+                        </span>
+                      </td>
+                      <td className="text-right">
+                        <button 
+                          onClick={() => alert(`Downloading report document for ${rep.id}...`)}
+                          className="btn-ghost btn-xs text-blue-600 dark:text-blue-450 hover:underline font-bold"
+                        >
+                          <Download size={12} className="inline mr-1" /> PDF
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
         </div>
@@ -1243,6 +1548,7 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
             <p className="text-[9px] font-bold text-slate-455 uppercase tracking-widest px-3 mb-2">Workspace settings</p>
             {[
               { id: 'personal', label: 'Office Profile', icon: User },
+              { id: 'preferences', label: 'Theme & Design', icon: Settings },
               { id: 'security', label: 'Security & Auth', icon: Lock },
               { id: 'database', label: 'Database Backup', icon: Database },
               { id: 'api', label: 'API & Maintenance', icon: Cpu }
@@ -1291,6 +1597,18 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
                 <button onClick={() => alert('Profile credentials updated.')} className="btn-primary text-xs py-2.5 px-6 rounded-xl font-bold">
                   Save Profile Info
                 </button>
+              </div>
+            )}
+
+            {profileSubTab === 'preferences' && (
+              <div className="space-y-6 animate-fade-in max-w-4xl">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">Workspace Design & Accessibility Settings</h4>
+                  <p className="text-xs text-slate-400">Configure visual accent colors, background themes, contrast modes, and text scaling.</p>
+                </div>
+
+                {/* Embedded Design & Accessibility Customizer */}
+                <ThemeCustomizer />
               </div>
             )}
 

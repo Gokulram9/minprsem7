@@ -170,55 +170,94 @@ def recommend():
 @app.route('/chatbot', methods=['POST'])
 def chatbot():
     payload = request.get_json() or {}
-    message = payload.get('message', '')
+    message = payload.get('message', '').strip()
     context = payload.get('context', {})
     
-    # 1. Parse current user query for keywords
-    nlp_extracted = extract_legal_intent(message)
+    message_lower = message.lower()
     
-    # Update context with newly extracted parameters
+    # 1. Parse legal intent parameters
+    nlp_extracted = extract_legal_intent(message)
     for k, v in nlp_extracted.items():
         if k not in context or not context[k]:
             context[k] = v
             
-    # Extract location if mentioned
-    message_lower = message.lower()
     for city in ['chennai', 'mumbai', 'delhi', 'colombo', 'galle', 'kandy', 'negombo']:
         if city in message_lower:
             context['location'] = city.capitalize()
             
-    # Extract budget/fees if numbers are mentioned
     import re
-    budget_match = re.search(r'(?:rs|lkr|\$|budget of)\s*(\d+[\d,.]*)', message_lower)
+    budget_match = re.search(r'(?:rs|lkr|₹|\$|budget of)\s*(\d+[\d,.]*)', message_lower)
     if budget_match:
         try:
             val = float(budget_match.group(1).replace(',', ''))
             context['budget'] = val
         except ValueError:
             pass
-            
-    # Compile response
+
     case_type = context.get('caseType')
     location = context.get('location')
-    urgency = context.get('urgency', 'Low')
+    urgency = context.get('urgency', 'Medium')
     
+    intent = None
     recommends_trigger = False
-    
-    # Simple conversational state machine based on collected criteria
-    if not case_type:
-        reply = "I understand you have a legal query. To assist you best, could you briefly describe the nature of your dispute? (e.g. employment issue, divorce, land boundary conflict, or criminal allegation)"
-    elif not location:
-        reply = f"I have categorized your issue under **{case_type}** with an urgency rating of **{urgency}**. In which city or location do you require representation?"
-    else:
-        reply = f"Excellent. Seeking top-tier advocates specializing in **{case_type}** located in **{location}**. Initiating weighted AI matcher algorithm calculation..."
+    reply = ""
+
+    # Helper function to generate echo snippet
+    snippet = message[:60] + ('...' if len(message) > 60 else '')
+
+    # 2. INTENT CLASSIFICATION & CONVERSATIONAL ECHOING
+
+    # 2. INTENT CLASSIFICATION & CHATGPT-STYLE CONVERSATIONAL ENGINE
+
+    # Greetings & Introductions ("hai", "hi", "hello", "hey", "haii", "hy", "yo", "good morning")
+    if any(re.search(r'\b' + re.escape(k) + r'\b', message_lower) for k in ['hai', 'haii', 'hi', 'hello', 'hey', 'hy', 'sup', 'yo', 'howdy', 'hola', 'greetings', 'good morning', 'good afternoon', 'good evening', 'who are you', 'what is your name', 'what can you do', 'help', 'help me']):
+        reply = "Hello! 👋 How can I assist you today?\n\nI am **Lexora AI**, your intelligent virtual legal assistant. Here is what I can help you with:\n\n• ⚖️ **Match Advocates**: Describe your dispute (property, divorce, employment, criminal) to find top verified lawyers.\n• 💳 **Lawyer Fees & Escrow**: Check due retainers, pay securely in Rupees (₹), and download PDF receipts.\n• 📄 **Legal Aid Applications**: Step-by-step guidance on applying for state-subsidized legal assistance.\n• 📅 **Case Docket Tracking**: View upcoming court hearing dates, judge details & courtroom halls.\n\nWhat would you like to explore today?"
+
+    # Thanks & Polite Closing
+    elif any(re.search(r'\b' + re.escape(k) + r'\b', message_lower) for k in ['thanks', 'thank you', 'thx', 'ty', 'awesome', 'great', 'cool', 'good', 'ok', 'okay', 'bye', 'goodbye']):
+        reply = "You're very welcome! 😊 I am here 24/7 whenever you need help with legal aid, lawyer fee payments in Rupees (₹), or checking court case schedules. Have a wonderful day!"
+
+    # Fee & Payment Queries
+    elif any(k in message_lower for k in ['fee', 'fees', 'pay', 'payment', 'cost', 'charge', 'rupee', 'rupees', 'rs', '₹', 'escrow', 'how much', 'price', 'due']):
+        reply = "Hello! All advocate retainers and court filing fees on our portal are processed in **Rupees (₹)** under secure judicial escrow protection.\n\n• **View & Pay Fees**: Select **Lawyer Fees** from your dashboard sidebar.\n• **Payment Methods**: Pay via Credit/Debit Card, UPI (GPay/PhonePe), or Net Banking.\n• **Receipts**: Download instant PDF receipts after payment."
+
+    # Legal Aid & Application Queries
+    elif any(k in message_lower for k in ['legal aid', 'apply', 'indigent', 'subsidy', 'free lawyer', 'how to apply', 'aid application']):
+        reply = "Hello! Applying for state-subsidized legal aid is simple:\n\n1. Go to **Applications** -> click **Apply for Legal Aid**.\n2. Fill out the 3-step wizard with your contact details and dispute category.\n3. Upload your National Identity Card or Income Certificate.\n\nOur legal aid committee will review your application and assign a verified public advocate."
+
+    # Case Tracking & Hearing Queries
+    elif any(k in message_lower for k in ['hearing', 'track', 'my case', 'status', 'next date', 'courtroom', 'judge', 'docket']):
+        reply = "Hello! You can track real-time court case details under the **My Cases** or **Case Tracker** tab in your sidebar. It displays upcoming hearing dates, assigned judge, courtroom hall numbers, and advocate litigation notes."
+
+    # Representation / Opposing Counsel Intent
+    elif any(k in message_lower for k in ['other side', 'opposing lawyer', 'opponent lawyer', 'representing the other side']):
+        intent = 'OPPOSING_LAWYER_QUERY'
+        reply = "Hello! Fetching authorized opposing counsel details from your active dockets..."
+    elif any(k in message_lower for k in ['who is the opponent', 'opponent in my case', 'opposing party']):
+        intent = 'OPPONENT_QUERY'
+        reply = "Hello! Fetching opposing party records for your active case..."
+    elif any(k in message_lower for k in ['who represents me', 'my lawyer', 'my counsel', 'representing me']):
+        intent = 'MY_LAWYER_QUERY'
+        reply = "Hello! Retrieving your assigned advocate details..."
+
+    # Specific Legal Dispute Category Identified
+    elif case_type and not location:
+        reply = f"Hello! I can certainly assist you with your **{case_type}** matter (Urgency: **{urgency}**).\n\nTo match you with the best advocate, which city or court location (e.g., Colombo, Chennai, Delhi, Galle, Kandy) do you require representation in?"
+
+    elif case_type and location:
+        reply = f"Hello! Searching for top verified advocates specializing in **{case_type}** in **{location}** (Urgency: **{urgency}**). Initiating AI matcher calculation..."
         recommends_trigger = True
-        
-    # Standard legal disclaimer
-    disclaimer = "七 Please note: I am an AI assistant designed to suggest counselor matches. I do not provide definitive legal advice or replace a qualified attorney."
-    
+
+    # General Fallback
+    else:
+        reply = f"Hello! I understand you have a legal query.\n\nCould you briefly describe your dispute (e.g. property boundary issue, divorce, workplace termination, or criminal allegation)? I can match you with an advocate or assist with fee payments in Rupees (₹)."
+
+    disclaimer = "Please note: I am Lexora AI, an assistant designed to convey authorized docket structures, facilitate fee payments, and suggest counselor matches. I do not replace a licensed attorney."
+
     return jsonify({
         'reply': f"{reply}\n\n*{disclaimer}*",
         'context': context,
+        'intent': intent,
         'triggerRecommendation': recommends_trigger,
         'filters': {
             'caseType': case_type,

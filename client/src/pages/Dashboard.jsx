@@ -1,6 +1,7 @@
-import { useContext, useState } from 'react';
+import { useContext, useState, useEffect } from 'react';
 import { Routes, Route, Navigate, NavLink, useLocation } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
+import { ThemeContext } from '../contexts/ThemeContext';
 import Sidebar from '../components/Sidebar';
 import ApplicantDashboard from './ApplicantDashboard';
 import LawyerDashboard from './LawyerDashboard';
@@ -13,12 +14,99 @@ import TopBar from '../components/TopBar';
 import FindLawyers from './FindLawyers';
 import LawyerProfile from './LawyerProfile';
 import JudgmentsSearch from './JudgmentsSearch';
+import CaseDetailsPage from './CaseDetailsPage';
 import { motion } from 'framer-motion';
 
 const Dashboard = () => {
   const { user, loading } = useContext(AuthContext);
+  const { theme } = useContext(ThemeContext);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const location = useLocation();
+
+  useEffect(() => {
+    const isCitizen = user?.role === 'User' || user?.role === 'Applicant';
+    const isLawyer = user?.role === 'Lawyer';
+    const isAdmin = user?.role === 'Admin' || user?.role === 'CourtStaff';
+    
+    if (isCitizen) {
+      document.documentElement.style.setProperty('--gold-500', '#C5A87C');
+      document.documentElement.style.setProperty('--gold-600', '#A38558');
+      
+      if (theme === 'dark') {
+        document.documentElement.style.setProperty('--bg-app', '#0A0F1D');
+        document.documentElement.style.setProperty('--bg-card', '#13192B');
+        document.documentElement.style.setProperty('--text-primary', '#F1F5F9');
+        document.documentElement.style.setProperty('--text-secondary', '#94A3B8');
+        document.documentElement.style.setProperty('--border-color', 'rgba(148, 163, 184, 0.08)');
+      } else {
+        document.documentElement.style.setProperty('--bg-app', '#F8FAFC');
+        document.documentElement.style.setProperty('--bg-card', '#FFFFFF');
+        document.documentElement.style.setProperty('--text-primary', '#0F172A');
+        document.documentElement.style.setProperty('--text-secondary', '#475569');
+        document.documentElement.style.setProperty('--border-color', 'rgba(15, 23, 42, 0.06)');
+      }
+    } else if (isLawyer) {
+      document.documentElement.style.setProperty('--color-brand-primary', '#60B3D1');
+      
+      if (theme === 'dark') {
+        document.documentElement.style.setProperty('--bg-app', '#011220');
+        document.documentElement.style.setProperty('--bg-card', '#012641');
+        document.documentElement.style.setProperty('--text-primary', '#F4FBFD');
+        document.documentElement.style.setProperty('--text-secondary', '#CBE3ED');
+        document.documentElement.style.setProperty('--border-color', 'rgba(244, 251, 253, 0.1)');
+      } else {
+        document.documentElement.style.setProperty('--bg-app', '#F4FBFD');
+        document.documentElement.style.setProperty('--bg-card', '#FFFFFF');
+        document.documentElement.style.setProperty('--text-primary', '#012641');
+        document.documentElement.style.setProperty('--text-secondary', '#21435E');
+        document.documentElement.style.setProperty('--border-color', 'rgba(1, 38, 65, 0.1)');
+      }
+    } else if (isAdmin) {
+      document.documentElement.style.setProperty('--purple-500', '#AEA668');
+      document.documentElement.style.setProperty('--purple-600', '#908852');
+      document.documentElement.style.setProperty('--purple-700', '#736B3D');
+      
+      if (theme === 'dark') {
+        document.documentElement.style.setProperty('--bg-app', '#13141A');
+        document.documentElement.style.setProperty('--bg-card', '#212530');
+        document.documentElement.style.setProperty('--text-primary', '#E9EAEC');
+        document.documentElement.style.setProperty('--text-secondary', '#C7C9CD');
+        document.documentElement.style.setProperty('--border-color', 'rgba(233, 234, 236, 0.1)');
+      } else {
+        document.documentElement.style.setProperty('--bg-app', '#E9EAEC');
+        document.documentElement.style.setProperty('--bg-card', '#FFFFFF');
+        document.documentElement.style.setProperty('--text-primary', '#212530');
+        document.documentElement.style.setProperty('--text-secondary', '#4C505C');
+        document.documentElement.style.setProperty('--border-color', 'rgba(33, 37, 48, 0.1)');
+      }
+    } else {
+      document.documentElement.style.removeProperty('--gold-500');
+      document.documentElement.style.removeProperty('--gold-600');
+      document.documentElement.style.removeProperty('--color-brand-primary');
+      document.documentElement.style.removeProperty('--purple-500');
+      document.documentElement.style.removeProperty('--purple-600');
+      document.documentElement.style.removeProperty('--purple-700');
+      document.documentElement.style.removeProperty('--bg-app');
+      document.documentElement.style.removeProperty('--bg-card');
+      document.documentElement.style.removeProperty('--text-primary');
+      document.documentElement.style.removeProperty('--text-secondary');
+      document.documentElement.style.removeProperty('--border-color');
+    }
+
+    return () => {
+      document.documentElement.style.removeProperty('--gold-500');
+      document.documentElement.style.removeProperty('--gold-600');
+      document.documentElement.style.removeProperty('--color-brand-primary');
+      document.documentElement.style.removeProperty('--purple-500');
+      document.documentElement.style.removeProperty('--purple-600');
+      document.documentElement.style.removeProperty('--purple-700');
+      document.documentElement.style.removeProperty('--bg-app');
+      document.documentElement.style.removeProperty('--bg-card');
+      document.documentElement.style.removeProperty('--text-primary');
+      document.documentElement.style.removeProperty('--text-secondary');
+      document.documentElement.style.removeProperty('--border-color');
+    };
+  }, [user, theme]);
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen bg-[var(--bg-app)]">
@@ -81,6 +169,7 @@ const Dashboard = () => {
             <Route path="track"         element={<CaseTracker />} />
             <Route path="find-lawyers"  element={<FindLawyers />} />
             <Route path="lawyers/:lawyerId" element={<LawyerProfile />} />
+            <Route path="cases/:caseId" element={<CaseDetailsPage />} />
             <Route path="judgments"     element={<JudgmentsSearch />} />
             
             {/* Admin Management Routes */}
@@ -101,7 +190,7 @@ const Dashboard = () => {
             <Route path="schedule-timeline" element={<Navigate to="../schedule" replace />} />
             <Route path="documents"     element={user.role === 'Admin' ? <AdminDashboard activeTab="documents" /> : (user.role === 'Lawyer' ? <LawyerDashboard activeTab="documents" /> : <ApplicantDashboard activeTab="documents" />)} />
             <Route path="messages"      element={user.role === 'Lawyer' ? <LawyerDashboard activeTab="messages" /> : <ApplicantDashboard activeTab="messages" />} />
-            <Route path="notifications" element={user.role === 'Admin' ? <AdminDashboard activeTab="notifications" /> : (user.role === 'Lawyer' ? <LawyerDashboard activeTab="notifications" /> : <ApplicantDashboard activeTab="notifications" />)} />
+            <Route path="fees"          element={user.role === 'Lawyer' ? <LawyerDashboard activeTab="fees" /> : <ApplicantDashboard activeTab="fees" />} />
             <Route path="feedback"      element={<Navigate to="../profile" replace />} />
             <Route path="help"          element={<Navigate to="../profile" replace />} />
             <Route path="profile"       element={user.role === 'Admin' ? <AdminDashboard activeTab="profile" /> : (user.role === 'Lawyer' ? <LawyerDashboard activeTab="profile" /> : <ApplicantDashboard activeTab="profile" />)} />

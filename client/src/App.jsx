@@ -64,9 +64,6 @@ function App() {
 
           {/* Global Search Palette */}
           <CommandPalette />
-
-          {/* Design customizer dialog panel */}
-          <ThemeCustomizer />
         </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>

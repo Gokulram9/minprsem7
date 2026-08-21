@@ -260,7 +260,7 @@ const FindLawyers = () => {
                     </div>
                     <div className="fl-metric">
                       <span className="fl-metric-label">Fee</span>
-                      <span className="fl-metric-val" style={{ color: accent }}>${lawyer.fee}/hr</span>
+                      <span className="fl-metric-val" style={{ color: accent }}>₹{lawyer.fee}/hr</span>
                     </div>
                   </div>
 
@@ -348,7 +348,7 @@ const FindLawyers = () => {
                     <span className="text-[11px] font-bold text-emerald-500">{lawyer.casesWon} won ({lawyer.successRate}%)</span>
                   </div>
                   <div className="h-10 flex items-center">
-                    <span className="text-[11px] font-bold text-[var(--text-primary)]">${lawyer.fee}/hr</span>
+                    <span className="text-[11px] font-bold text-[var(--text-primary)]">₹{lawyer.fee}/hr</span>
                   </div>
                   <div className="h-10 flex items-center gap-1">
                     <Star size={11} className="fill-amber-400 text-amber-400" />

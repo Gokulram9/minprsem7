@@ -304,25 +304,80 @@ const CaseTracker = () => {
           {steps.map((step, idx) => (
             <div key={step.id} className="relative flex flex-col items-center sm:items-start">
               
-              {/* Connector line */}
+              {/* Connector line (Horizontal - Desktop) */}
               {idx < steps.length - 1 && (
-                <div className="hidden sm:block absolute top-5 left-10 right-0 h-0.5 bg-slate-200 dark:bg-slate-800 -z-10" />
+                <div className="hidden sm:block absolute top-5 left-10 right-[-1.5rem] h-1 -z-10 pointer-events-none">
+                  <svg className="w-full h-full overflow-visible" fill="none">
+                    <line 
+                      x1="0" 
+                      y1="2" 
+                      x2="100%" 
+                      y2="2" 
+                      stroke={step.complete ? 'var(--color-brand-primary, #2563EB)' : '#E2E8F0'} 
+                      strokeWidth="2.5" 
+                      strokeDasharray={step.complete ? 'none' : '4 4'}
+                      className={step.complete ? '' : 'dark:stroke-slate-800'}
+                    />
+                    {step.complete && steps[idx + 1].active && (
+                      <line 
+                        x1="0" 
+                        y1="2" 
+                        x2="100%" 
+                        y2="2" 
+                        stroke="#2563EB" 
+                        strokeWidth="3.5" 
+                        className="animate-dash-flow"
+                      />
+                    )}
+                  </svg>
+                </div>
               )}
-              {idx < steps.length - 1 && steps[idx + 1].complete && (
-                <div className="hidden sm:block absolute top-5 left-10 right-0 h-0.5 bg-blue-600 -z-10" />
+
+              {/* Connector line (Vertical - Mobile) */}
+              {idx < steps.length - 1 && (
+                <div className="block sm:hidden absolute top-10 left-5 bottom-[-1.5rem] w-1 -z-10 pointer-events-none">
+                  <svg className="w-full h-full overflow-visible" fill="none">
+                    <line 
+                      x1="2" 
+                      y1="0" 
+                      x2="2" 
+                      y2="100%" 
+                      stroke={step.complete ? 'var(--color-brand-primary, #2563EB)' : '#E2E8F0'} 
+                      strokeWidth="2.5" 
+                      strokeDasharray={step.complete ? 'none' : '4 4'}
+                      className={step.complete ? '' : 'dark:stroke-slate-800'}
+                    />
+                    {step.complete && steps[idx + 1].active && (
+                      <line 
+                        x1="2" 
+                        y1="0" 
+                        x2="2" 
+                        y2="100%" 
+                        stroke="#2563EB" 
+                        strokeWidth="3.5" 
+                        className="animate-dash-flow"
+                      />
+                    )}
+                  </svg>
+                </div>
               )}
 
               {/* Circle */}
               <div 
-                className={`flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold transition duration-300 ${
+                className={`relative flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold transition duration-300 ${
                   step.complete 
-                    ? 'bg-blue-600 text-white' 
+                    ? 'bg-blue-600 text-white shadow-md' 
                     : step.active 
-                    ? 'bg-white border-2 border-blue-500 text-blue-600 ring-4 ring-blue-100/50 dark:bg-slate-950 dark:ring-blue-950/30' 
+                    ? 'bg-white border-2 border-blue-500 text-blue-600 dark:bg-slate-950 animate-pulse-glow z-10' 
                     : 'bg-slate-100 text-slate-400 dark:bg-slate-900 border border-slate-200 dark:border-slate-800'
                 }`}
               >
                 {step.complete ? <CheckCircle2 size={16} /> : step.id}
+                
+                {/* Glowing ring for active step */}
+                {step.active && (
+                  <span className="absolute inset-0 rounded-full animate-ping bg-blue-400/20 dark:bg-blue-500/10 pointer-events-none" />
+                )}
               </div>
 
               {/* Labels */}

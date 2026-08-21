@@ -11,6 +11,8 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { AuthContext } from '../contexts/AuthContext';
 import ladyJusticeImg from '../assets/lady-justice.png';
+import archangelRaguelImg from '../assets/archangel-raguel.png';
+import InteractiveCanvasBackground from '../components/InteractiveCanvasBackground';
 
 /* ─── Animated Counter Hook ─── */
 const useCounter = (target, duration = 2000, start = false) => {
@@ -113,7 +115,7 @@ const Home = () => {
 
   const stats = [
     { value: '54200+', label: 'Cases Managed', icon: FileText, color: '#3B82F6', delay: 0 },
-    { value: '4850+',  label: 'Verified Lawyers', icon: Users, color: '#B69D74', delay: 0.1 },
+    { value: '4850+',  label: 'Verified Lawyers', icon: Users, color: '#AEA668', delay: 0.1 },
     { value: '96.4%',  label: 'Success Rate', icon: TrendingUp, color: '#10B981', delay: 0.2 },
     { value: '24/7',   label: 'Support Desk', icon: Shield, color: '#8B5CF6', delay: 0.3 },
   ];
@@ -124,7 +126,7 @@ const Home = () => {
     { icon: Shield,    title: 'Legal Aid Tracker', desc: 'Follow application reviews, asset checks, and public defender assignments in a transparent timeline.', color: '#10B981', bg: 'rgba(16,185,129,0.1)' },
     { icon: BarChart2, title: 'Operational Analytics', desc: 'Detailed SVG chart telemetry for judges and advocates to monitor court throughput.', color: '#F59E0B', bg: 'rgba(245,158,11,0.1)' },
     { icon: FileText,  title: 'Encrypted Doc Vault', desc: 'Secure cloud file system using zero-knowledge architecture to store ID papers and legal proofs.', color: '#EF4444', bg: 'rgba(239,68,68,0.1)' },
-    { icon: Users,     title: 'Automated Reminders', desc: 'Configured email and text alerts dispatched 24 hours prior to scheduled virtual court dates.', color: '#B69D74', bg: 'rgba(182,157,116,0.1)' },
+    { icon: Users,     title: 'Automated Reminders', desc: 'Configured email and text alerts dispatched 24 hours prior to scheduled virtual court dates.', color: '#AEA668', bg: 'rgba(174,166,104,0.1)' },
   ];
 
   // Particles for hero
@@ -136,7 +138,7 @@ const Home = () => {
     animationDuration: `${4 + Math.random() * 6}s`,
     animationDelay: `${Math.random() * 4}s`,
     opacity: 0.2 + Math.random() * 0.4,
-    background: ['#B69D74', '#3B82F6', '#8B5CF6', '#10B981'][Math.floor(Math.random() * 4)],
+    background: ['#AEA668', '#3B82F6', '#8B5CF6', '#10B981'][Math.floor(Math.random() * 4)],
   }));
 
   return (
@@ -152,14 +154,30 @@ const Home = () => {
         <div className="hero-grid-overlay" />
         
         {/* Floating particles */}
-        <div className="particles-container" aria-hidden="true">
-          {particles.map((p, i) => <Particle key={i} style={p} />)}
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none" aria-hidden="true">
+          <InteractiveCanvasBackground density={80} maxDistance={120} speed={0.65} interactive={true} />
         </div>
 
         {/* Ambient blobs */}
         <div className="hero-blob hero-blob-1" />
         <div className="hero-blob hero-blob-2" />
         <div className="hero-blob hero-blob-3" />
+
+        {/* Archangel Raguel background watermarks */}
+        <div className="absolute right-[-10%] top-[10%] w-[550px] h-[550px] opacity-[0.06] dark:opacity-[0.03] pointer-events-none select-none z-0 hidden lg:block">
+          <img 
+            src={archangelRaguelImg} 
+            alt="" 
+            className="w-full h-full object-contain animate-pulse-slow"
+          />
+        </div>
+        <div className="absolute left-[-15%] bottom-[-5%] w-[450px] h-[450px] opacity-[0.05] dark:opacity-[0.02] pointer-events-none select-none z-0 hidden lg:block">
+          <img 
+            src={archangelRaguelImg} 
+            alt="" 
+            className="w-full h-full object-contain scale-x-[-1]"
+          />
+        </div>
 
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
@@ -179,45 +197,38 @@ const Home = () => {
               {/* Badge */}
               <div className="hero-badge">
                 <div className="hero-badge-dot" />
-                <Scale size={12} className="text-[#B69D74]" />
-                <span className="text-[10px] font-extrabold uppercase tracking-[0.25em] text-[#B69D74]">
+                <Scale size={12} className="text-[#AEA668]" />
+                <span className="text-[10px] font-extrabold uppercase tracking-[0.25em] text-[#AEA668]">
                   Official Justice Portal · Seven Seas Judicial System
                 </span>
               </div>
 
               {/* Headline */}
               <h1 className="hero-headline">
-                Equal Justice
+                Justice,
                 <br />
-                <span className="hero-headline-gradient">Under Rule of</span>
+                <span className="hero-headline-gradient">Powered by</span>
                 <br />
-                <span className="hero-headline-gradient">Law.</span>
+                <span className="hero-headline-gradient">Intelligence.</span>
               </h1>
 
-              {/* Quote pill */}
-              <div className="hero-quote-pill">
-                <div className="hero-quote-line" />
-                <p className="text-[12px] italic font-medium leading-relaxed text-[var(--text-secondary)]">
-                  "Justice is the constant and perpetual will to give to each their due. Delayed justice is denied justice; we make legal representation and case coordination transparent, accessible, and fair for all."
-                </p>
-              </div>
-
-              <p className="max-w-lg text-[14px] leading-relaxed text-[var(--text-secondary)]">
-                Seven Seas coordinates scheduling dockets, matches indigent applicants with qualified advocates, and hosts remote courtroom chambers securely for citizens, lawyers, and administrators.
+              {/* Subtitle */}
+              <p className="max-w-xl text-[15px] leading-relaxed text-[var(--text-secondary)] font-medium">
+                An intelligent legal platform connecting people, lawyers, and courts through AI-powered assistance and smarter case management.
               </p>
 
               {/* CTA Buttons */}
               <div className="flex flex-wrap gap-4">
-                <Link to="/register">
+                <Link to="/login">
                   <button className="hero-cta-primary group">
                     <Sparkles size={14} className="group-hover:animate-spin transition-all duration-300" />
-                    Apply for Legal Aid
+                    Find Your Lawyer
                     <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                   </button>
                 </Link>
-                <Link to="/login">
+                <Link to="/register">
                   <button className="hero-cta-secondary group">
-                    Enter Workspace Portal
+                    Explore the Platform
                     <ExternalLink size={13} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                   </button>
                 </Link>
@@ -227,7 +238,7 @@ const Home = () => {
               <div className="flex flex-wrap items-center gap-6 pt-2">
                 {[
                   { icon: Shield, text: 'SSL Encrypted', color: '#10B981' },
-                  { icon: Award, text: 'Court Certified', color: '#B69D74' },
+                  { icon: Award, text: 'Court Certified', color: '#AEA668' },
                   { icon: Globe, text: 'Nationwide Access', color: '#3B82F6' },
                 ].map(({ icon: Icon, text, color }) => (
                   <div key={text} className="flex items-center gap-1.5">
@@ -260,7 +271,7 @@ const Home = () => {
                       className="text-lg font-bold mt-0.5"
                       style={{
                         fontFamily: 'var(--font-display)',
-                        background: 'linear-gradient(90deg, #B69D74 0%, #E6D5B8 50%, #9A7E55 100%)',
+                        background: 'linear-gradient(90deg, #AEA668 0%, #E6D5B8 50%, #9A7E55 100%)',
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                         backgroundClip: 'text',
@@ -284,7 +295,7 @@ const Home = () => {
                     { id: 'AID-992', title: 'Asset Verification Passed', status: 'Approved', color: '#10B981', icon: CheckCircle },
                     { id: 'CRT-105', title: 'Chamber 4 Conflict Resolved', status: 'Scheduled', color: '#3B82F6', icon: Calendar },
                     { id: 'ADV-402', title: 'AI matching score 98%', status: 'Assigned', color: '#8B5CF6', icon: Sparkles },
-                    { id: 'DOC-731', title: 'Document vault encrypted', status: 'Secured', color: '#B69D74', icon: Lock },
+                    { id: 'DOC-731', title: 'Document vault encrypted', status: 'Secured', color: '#AEA668', icon: Lock },
                   ].map((log, i) => {
                     const Icon = log.icon;
                     return (
@@ -391,23 +402,68 @@ const Home = () => {
               </Link>
             </div>
 
-            {/* Column 2: Lady Justice Illustration */}
+            {/* Overlapping illustration card stack */}
+            <div className="relative h-[340px] w-[260px] mx-auto shrink-0 hidden md:block select-none">
+              {/* Card 1: Archangel Raguel (Back Card) */}
+              <motion.div
+                initial={{ opacity: 0, rotate: -6, x: -15 }}
+                whileInView={{ opacity: 1, rotate: -6, x: -15 }}
+                whileHover={{ rotate: -12, x: -50, zIndex: 30 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, ease: 'easeOut' }}
+                className="absolute inset-0 rounded-3xl overflow-hidden shadow-2xl border border-slate-200/10 dark:border-white/5 bg-slate-900/80 cursor-pointer z-10"
+              >
+                <img 
+                  src={archangelRaguelImg} 
+                  alt="Archangel Raguel Illustration" 
+                  className="w-full h-full object-cover" 
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent pointer-events-none" />
+                <div className="absolute bottom-4 left-4 right-4 text-left">
+                  <p className="text-[9px] uppercase tracking-[0.2em] font-extrabold text-[#AEA668]">Archangel Raguel</p>
+                  <p className="text-[10px] font-bold text-white mt-0.5 leading-relaxed">Angel of Justice, Fairness & Harmony.</p>
+                </div>
+              </motion.div>
+
+              {/* Card 2: Lady Justice (Front Card) */}
+              <motion.div
+                initial={{ opacity: 0, rotate: 3, x: 15 }}
+                whileInView={{ opacity: 1, rotate: 3, x: 15 }}
+                whileHover={{ rotate: 8, x: 50, zIndex: 30 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, ease: 'easeOut' }}
+                className="absolute inset-0 rounded-3xl overflow-hidden shadow-2xl border border-slate-200/10 dark:border-white/5 bg-slate-900/80 cursor-pointer z-20"
+              >
+                <img 
+                  src={ladyJusticeImg} 
+                  alt="Lady Justice Illustration" 
+                  className="w-full h-full object-cover" 
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent pointer-events-none" />
+                <div className="absolute bottom-4 left-4 right-4 text-left">
+                  <p className="text-[9px] uppercase tracking-[0.2em] font-extrabold text-[#AEA668]">Lady Justice</p>
+                  <p className="text-[10px] font-bold text-white mt-0.5 leading-relaxed">Protecting civil rights & constitutional liberties.</p>
+                </div>
+              </motion.div>
+            </div>
+
+            {/* Mobile Single Card Fallback */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true, margin: "-80px" }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className="relative rounded-3xl overflow-hidden shadow-2xl border border-slate-200/10 dark:border-white/5 bg-slate-950/20 max-w-xs mx-auto shrink-0 group"
+              transition={{ duration: 0.6 }}
+              className="relative rounded-3xl overflow-hidden shadow-2xl border border-slate-200/10 dark:border-white/5 bg-slate-950/20 max-w-xs mx-auto shrink-0 group block md:hidden"
             >
               <img 
-                src={ladyJusticeImg} 
-                alt="Lady Justice Illustration" 
+                src={archangelRaguelImg} 
+                alt="Archangel Raguel Illustration" 
                 className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-105" 
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent pointer-events-none" />
               <div className="absolute bottom-4 left-4 right-4 text-left">
-                <p className="text-[9px] uppercase tracking-[0.2em] font-extrabold text-[#B69D74]">Equitable Representation</p>
-                <p className="text-[11px] font-bold text-white mt-0.5 leading-relaxed">Protecting civil rights & constitutional liberties.</p>
+                <p className="text-[9px] uppercase tracking-[0.2em] font-extrabold text-[#AEA668]">Archangel Raguel</p>
+                <p className="text-[10px] font-bold text-white mt-0.5 leading-relaxed">Angel of Justice and Fairness.</p>
               </div>
             </motion.div>
 

@@ -8,6 +8,9 @@ import {
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import { motion } from 'framer-motion';
+import archangelRaguelImg from '../assets/archangel-raguel.png';
+import InteractiveCanvasBackground from '../components/InteractiveCanvasBackground';
+
 
 const ROLES = [
   {
@@ -25,23 +28,23 @@ const ROLES = [
     id: 'Lawyer',
     label: 'Advocate',
     icon: Scale,
-    color: '#B69D74',
-    grad: 'linear-gradient(135deg,#9A7E55,#B69D74)',
+    color: '#AEA668',
+    grad: 'linear-gradient(135deg,#908852,#AEA668)',
     email: 'lawyer@sevenseas.com',
     desc: 'Manage hearings and client cases',
-    bg: 'rgba(182,157,116,0.08)',
-    border: 'rgba(182,157,116,0.25)',
+    bg: 'rgba(174,166,104,0.08)',
+    border: 'rgba(174,166,104,0.25)',
   },
   {
     id: 'Admin',
     label: 'Admin',
     icon: Crown,
-    color: '#8B5CF6',
-    grad: 'linear-gradient(135deg,#6D28D9,#8B5CF6)',
+    color: '#AEA668',
+    grad: 'linear-gradient(135deg,#908852,#AEA668)',
     email: 'gokulrams.cs23@bitsathy.ac.in',
     desc: 'System administration & control',
-    bg: 'rgba(139,92,246,0.08)',
-    border: 'rgba(139,92,246,0.25)',
+    bg: 'rgba(174,166,104,0.08)',
+    border: 'rgba(174,166,104,0.25)',
   },
 ];
 
@@ -266,7 +269,7 @@ const Login = () => {
 
             {/* Central Seven Seas Logo Badge */}
             <div className="absolute h-28 w-28 rounded-3xl flex items-center justify-center shadow-2xl bg-[#090F1C] border border-white/10 hover:border-white/20 transition-all duration-300">
-              <Logo className="h-14 w-14 text-[#B69D74]" strokeWidth={1.5} />
+              <Logo className="h-14 w-14 text-[#AEA668]" strokeWidth={1.5} />
               
               {/* Pulse circle */}
               <div className="absolute inset-0 rounded-3xl border border-blue-500/20 animate-ping pointer-events-none" style={{ animationDuration: '3s' }} />
@@ -276,7 +279,7 @@ const Login = () => {
           {/* Heading Credentials */}
           <div className="space-y-3 animate-fade-in-up">
             <h1 
-              className="text-4xl font-black tracking-[0.25em] uppercase font-space bg-gradient-to-r from-[#B69D74] via-[#FFFFFF] to-[#B69D74] bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(182,157,116,0.35)]"
+              className="text-4xl font-black tracking-[0.25em] uppercase font-space bg-gradient-to-r from-[#AEA668] via-[#FFFFFF] to-[#AEA668] bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(174,166,104,0.35)]"
               style={{
                 backgroundSize: '200% auto',
                 animation: 'textShimmer 3s linear infinite'
@@ -320,25 +323,26 @@ const Login = () => {
 
         {/* Animated blob bg */}
         <div className="absolute top-0 right-0 w-80 h-80 rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, ${role?.color}12, transparent 70%)`, filter: 'blur(70px)', transition: 'background 0.5s ease' }} />
-        <div className="absolute bottom-0 left-0 w-72 h-72 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(182,157,116,0.07), transparent 70%)', filter: 'blur(60px)' }} />
+        <div className="absolute bottom-0 left-0 w-72 h-72 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(174,166,104,0.07), transparent 70%)', filter: 'blur(60px)' }} />
+
+        {/* Archangel Raguel Left Panel Watermark */}
+        <div className="absolute right-[-15%] bottom-[-5%] w-[360px] h-[360px] opacity-[0.06] pointer-events-none select-none z-0">
+          <img 
+            src={archangelRaguelImg} 
+            alt="" 
+            className="w-full h-full object-contain"
+          />
+        </div>
 
         {/* Floating background particles */}
         <div className="absolute inset-0 pointer-events-none z-0">
-          {particles.map((p, idx) => (
-            <div
-              key={idx}
-              className={`absolute rounded-full opacity-30 ${idx % 2 === 0 ? 'animate-float-slow' : 'animate-float-reverse'}`}
-              style={{
-                left: p.left,
-                top: p.top,
-                width: `${p.w}px`,
-                height: `${p.w}px`,
-                background: p.color,
-                animationDelay: `${p.delay}s`,
-                animationDuration: `${p.dur}s`,
-              }}
-            />
-          ))}
+          <InteractiveCanvasBackground 
+            colorOverride={role?.color || '#3B82F6'} 
+            density={45} 
+            maxDistance={110} 
+            speed={0.5} 
+            interactive={true} 
+          />
         </div>
 
         {/* Grid */}
@@ -349,18 +353,15 @@ const Login = () => {
 
         {/* Logo */}
         <div className="relative z-10 flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(182,157,116,0.1)', border: '1px solid rgba(182,157,116,0.2)' }}>
-            <Logo className="h-6 w-6 text-[#B69D74]" strokeWidth={2} />
+          <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(174,166,104,0.1)', border: '1px solid rgba(174,166,104,0.2)' }}>
+            <Logo className="h-6 w-6 text-[#AEA668]" strokeWidth={2} />
           </div>
           <div>
             <p
-              className="font-bold text-[15px] uppercase tracking-wider"
+              className="font-bold text-[15px] uppercase tracking-wider bg-clip-text text-transparent"
               style={{
                 fontFamily: 'var(--font-display)',
-                background: 'linear-gradient(90deg, #B69D74 0%, #E6D5B8 50%, #9A7E55 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
+                backgroundImage: 'linear-gradient(90deg, #AEA668 0%, #E6D5B8 50%, #AEA668 100%)',
                 display: 'inline-block'
               }}
             >
@@ -438,27 +439,33 @@ const Login = () => {
       </div>
 
       {/* ── RIGHT PANEL (Form) ── */}
-      <div className="flex flex-1 items-center justify-center px-6 py-8 h-full overflow-y-auto bg-[var(--bg-app)]">
+      <div className="flex flex-1 items-center justify-center px-6 py-8 h-full overflow-y-auto bg-[var(--bg-app)] relative">
+        {/* Archangel Raguel Form Background Watermark */}
+        <div className="absolute right-[5%] bottom-[-10%] w-[380px] h-[380px] opacity-[0.03] dark:opacity-[0.015] pointer-events-none select-none z-0">
+          <img 
+            src={archangelRaguelImg} 
+            alt="" 
+            className="w-full h-full object-contain"
+          />
+        </div>
+
         <motion.div 
           initial={{ opacity: 0, scale: 0.96, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.45 }}
-          className="w-full max-w-[430px] p-8 rounded-[24px] glass-card space-y-6 shadow-2xl"
+          className="w-full max-w-[430px] p-8 rounded-[24px] glass-card space-y-6 shadow-2xl relative z-10"
         >
 
           {/* Mobile logo */}
           <div className="flex lg:hidden items-center gap-2 mb-4">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#1A2236,#2D3A55)' }}>
-              <Logo className="h-5 w-5 text-[#B69D74]" strokeWidth={2} />
+              <Logo className="h-5 w-5 text-[#AEA668]" strokeWidth={2} />
             </div>
             <span
-              className="font-bold text-[15px] uppercase tracking-wider"
+              className="font-bold text-[15px] uppercase tracking-wider bg-clip-text text-transparent"
               style={{
                 fontFamily: 'var(--font-display)',
-                background: 'linear-gradient(90deg, #B69D74 0%, #E6D5B8 50%, #9A7E55 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
+                backgroundImage: 'linear-gradient(90deg, #AEA668 0%, #E6D5B8 50%, #AEA668 100%)',
               }}
             >
               Seven Seas
