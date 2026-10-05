@@ -5,3 +5,4 @@ judgments.db
 uploads/
 *.log
 .DS_Store
+backend/.env

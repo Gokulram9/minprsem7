@@ -2,7 +2,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-const uploadFolder = process.env.UPLOAD_FOLDER || 'uploads';
+const uploadFolder = process.env.UPLOAD_FOLDER || path.join(__dirname, '..', '..', 'uploads');
 if (!fs.existsSync(uploadFolder)) {
   fs.mkdirSync(uploadFolder, { recursive: true });
 }

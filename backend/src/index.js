@@ -23,7 +23,7 @@ const lawyerRoutes = require('./routes/lawyerRoutes');
 const chatbotRoutes = require('./routes/chatbotRoutes');
 const { errorHandler, notFound } = require('./middleware/errorMiddleware');
 
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../../backend/.env') });
 
 const app = express();
 const server = http.createServer(app);
@@ -33,7 +33,7 @@ app.use(helmet());
 app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5175' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(path.join(__dirname, '..', '..', 'uploads')));
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -63,8 +63,8 @@ app.get('/api/health', (_req, res) => {
 });
 
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '..', 'client', 'dist')));
-  app.get('*', (_req, res) => res.sendFile(path.resolve(__dirname, '..', 'client', 'dist', 'index.html')));
+  app.use(express.static(path.join(__dirname, '..', '..', 'frontend', 'dist')));
+  app.get('*', (_req, res) => res.sendFile(path.resolve(__dirname, '..', '..', 'frontend', 'dist', 'index.html')));
 }
 
 app.use(notFound);
