@@ -20,10 +20,11 @@ const adminRoutes = require('./routes/adminRoutes');
 const reminderRoutes = require('./routes/reminderRoutes');
 const judgmentRoutes = require('./routes/judgmentRoutes');
 const lawyerRoutes = require('./routes/lawyerRoutes');
+const judgeRoutes = require('./routes/judgeRoutes');
 const chatbotRoutes = require('./routes/chatbotRoutes');
 const { errorHandler, notFound } = require('./middleware/errorMiddleware');
 
-dotenv.config({ path: path.resolve(__dirname, '../../backend/.env') });
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
 const server = http.createServer(app);
@@ -56,6 +57,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/reminders', reminderRoutes);
 app.use('/api/judgments', judgmentRoutes);
 app.use('/api/lawyers', lawyerRoutes);
+app.use('/api/judge', judgeRoutes);
 app.use('/api/chatbot', chatbotRoutes);
 
 app.get('/api/health', (_req, res) => {

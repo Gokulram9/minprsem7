@@ -82,7 +82,7 @@ const seedDemo = async () => {
         name: `${name} (Court Staff)`,
         email: `${generateUsername(name)}@example.com`,
         password: passDemo,
-        role: 'User',
+        role: 'CourtStaff',
         phone: '98800000' + Math.floor(Math.random() * 99),
         location: 'Mumbai',
       });
@@ -141,12 +141,40 @@ const seedDemo = async () => {
       });
     }));
 
+    // 4.5 Create Judge Users
+    console.log('⚖️ Seeding Judge Users...');
+    const judgeUser1 = await User.create({
+      name: 'Hon. Justice Amarasinghe',
+      email: 'judge@sevenseas.com',
+      password: passDemo,
+      role: 'Judge',
+      phone: '9000000008',
+      location: 'Colombo',
+      specialization: 'Civil & Criminal Litigation'
+    });
+
+    const judgeUser2 = await User.create({
+      name: 'Hon. Justice Rajesh Sharma',
+      email: 'judge1@example.com',
+      password: passDemo,
+      role: 'Judge',
+      phone: '9000000009',
+      location: 'Delhi',
+      specialization: 'Constitutional Law'
+    });
+
     // 5. Courts, Courtrooms, Judges
     console.log('🏛️ Seeding Courts...');
-    const courtDocs = await Promise.all(courtsList.map(async (cName) => {
+    const courtDocs = await Promise.all(courtsList.map(async (cName, idx) => {
       const c = await Court.create({ name: cName, location: 'India' });
       await Courtroom.create({ courtId: c._id, name: 'Room 1', capacity: 50 });
-      await Judge.create({ name: 'Hon. Judge ' + cName.split(' ')[0], courtId: c._id, specialization: 'General' });
+      await Judge.create({ 
+        userId: idx % 2 === 0 ? judgeUser1._id : judgeUser2._id,
+        name: 'Hon. Judge ' + cName.split(' ')[0], 
+        courtId: c._id, 
+        specialization: 'General',
+        contactEmail: idx % 2 === 0 ? judgeUser1.email : judgeUser2.email
+      });
       return c;
     }));
 
@@ -183,7 +211,7 @@ const seedDemo = async () => {
           application: app._id,
           hearingDate: new Date(Date.now() + (i - 10) * 24 * 60 * 60 * 1000), // Mix of past and future
           courtroom: 'Room 1',
-          judge: 'Hon. Judge ' + courtsList[i % courtsList.length].split(' ')[0],
+          judgeName: 'Hon. Judge ' + courtsList[i % courtsList.length].split(' ')[0],
           status: i % 3 === 0 ? 'Completed' : (i % 3 === 1 ? 'Scheduled' : 'Postponed'),
           notes: 'Regular hearing.'
         });

@@ -24,4 +24,27 @@ const markAsRead = async (req, res, next) => {
   }
 };
 
-module.exports = { getNotifications, markAsRead };
+const markAllAsRead = async (req, res, next) => {
+  try {
+    await Notification.updateMany({ user: req.user._id, read: false }, { read: true });
+    res.json({ message: 'All notifications marked as read' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const createNotification = async (req, res, next) => {
+  try {
+    const notification = await Notification.create({
+      user: req.body.userId || req.user._id,
+      application: req.body.applicationId,
+      message: req.body.message,
+      category: req.body.category || 'Update'
+    });
+    res.status(201).json(notification);
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { getNotifications, markAsRead, markAllAsRead, createNotification };

@@ -44,6 +44,7 @@ import {
   Smartphone,
   ChevronDown
 } from 'lucide-react';
+import RegistrationWizard from '../components/RegistrationWizard';
 
 const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
   const { user, logout } = useContext(AuthContext);
@@ -120,6 +121,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
   const [notifications, setNotifications] = useState([]);
   const [documents, setDocuments] = useState([]);
   const [dashboardLoading, setDashboardLoading] = useState(true);
+  const [upcomingHearingsCount, setUpcomingHearingsCount] = useState(0);
 
   const fileInputRef = useRef(null);
 
@@ -135,7 +137,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
         date: new Date(a.createdAt).toLocaleDateString(),
         type: a.caseType,
         desc: a.description,
-        courtroom: a.court || 'District Court',
+        courtroom: a.courtDetails?.courtName || a.court || 'District Court',
         lawyer: a.assignedLawyer?.name || 'TBD',
         nextHearing: a.hearing?.hearingDate ? new Date(a.hearing.hearingDate).toLocaleDateString() : 'TBD',
         status: a.status,
@@ -148,6 +150,10 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
       }));
       setApplications(mappedApps);
 
+      // Count upcoming hearings
+      const hearingApps = apps.filter(a => a.hearing?.hearingDate && new Date(a.hearing.hearingDate) >= new Date());
+      setUpcomingHearingsCount(hearingApps.length);
+
       // Filter cases (applications with status other than Submitted/Verification/Under Review/Rejected)
       const activeCases = apps
         .filter(a => ['LawyerAssigned', 'CourtScheduled', 'Hearing', 'Judgment', 'Completed'].includes(a.status))
@@ -155,7 +161,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
           id: a._id,
           title: a.caseTitle,
           type: a.caseType,
-          court: a.court || 'District Court',
+          court: a.courtDetails?.courtName || a.court || 'District Court',
           judge: a.hearing?.judge || 'Presiding Judge',
           lawyer: a.assignedLawyer?.name || 'TBD',
           status: a.status === 'Completed' ? 'Completed' : 'Active',
@@ -170,23 +176,25 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
         const notifResp = await axios.get('/notifications');
         setNotifications(notifResp.data);
       } catch (err) {
-        console.warn('Failed to load notifications from server, keeping fallback.', err.message);
-        setNotifications([
-          { id: 1, title: 'Welcome to Seven Seas', body: 'Your dashboard is fully integrated with judicial databases.', time: '1 min ago', read: false }
-        ]);
+        console.warn('Failed to load notifications from server.', err.message);
+        setNotifications([]);
       }
 
-      // Fetch documents for the user's applications
-      let docs = [];
-      if (apps.length > 0) {
-        try {
-          const docResp = await axios.get('/documents', { params: { application: apps[0]._id } });
-          docs = docResp.data;
-        } catch (err) {
-          console.warn('Could not load documents from backend.', err.message);
-        }
+      // Fetch all documents for the user
+      try {
+        const docResp = await axios.get('/documents');
+        setDocuments(docResp.data.map(d => ({
+          ...d,
+          id: d._id,
+          name: d.originalName || d.filename,
+          type: d.documentType || d.category || 'General',
+          size: d.size ? (d.size / 1024).toFixed(1) + ' KB' : 'N/A',
+          date: new Date(d.createdAt).toLocaleDateString(),
+          status: d.verificationStatus || 'Pending',
+        })));
+      } catch (err) {
+        console.warn('Could not load documents from backend.', err.message);
       }
-      setDocuments(docs);
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
     } finally {
@@ -356,8 +364,10 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      if (applications.length > 0) {
-        formData.append('application', applications[0]._id);
+      // Attach to the most recently active application if available
+      const activeApp = applications.find(a => ['LawyerAssigned', 'CourtScheduled', 'Hearing'].includes(a.status)) || applications[0];
+      if (activeApp) {
+        formData.append('application', activeApp._id || activeApp.id);
       }
 
       const config = {
@@ -368,18 +378,28 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
         }
       };
 
-      const response = await axios.post('/documents', formData, config);
-      setDocuments(prev => [...prev, response.data]);
-      alert('Document uploaded successfully to the verification queue.');
-      fetchDashboardData();
+      const resp = await axios.post('/documents', formData, config);
+      const d = resp.data;
+      setDocuments(prev => [...prev, {
+        ...d,
+        id: d._id,
+        name: d.originalName || d.filename,
+        type: d.documentType || d.category || 'General',
+        size: d.size ? (d.size / 1024).toFixed(1) + ' KB' : 'N/A',
+        date: new Date(d.createdAt || Date.now()).toLocaleDateString(),
+        status: d.verificationStatus || 'Pending',
+      }]);
+      alert('Document uploaded successfully. Pending admin verification.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err) {
       console.error('Error uploading document:', err);
-      alert('Failed to upload document.');
+      alert('Failed to upload document: ' + (err.response?.data?.message || err.message));
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
     }
   };
+
 
   // Action: Withdraw Application
   const handleWithdraw = (appId) => {
@@ -390,19 +410,49 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
     }
   };
 
-  // Chat message send
-  const handleSendMessage = () => {
+  // Chat/Messages: load from backend when tab active
+  const [backendMessages, setBackendMessages] = useState([]);
+  const [chatLoadError, setChatLoadError] = useState('');
+
+  const fetchMessages = async () => {
+    try {
+      const resp = await axios.get('/messages');
+      setBackendMessages(resp.data);
+    } catch (err) {
+      setChatLoadError('Could not load messages.');
+    }
+  };
+
+  // Chat message send to backend
+  const handleSendMessage = async () => {
     if (!typedMessage.trim()) return;
+    const text = typedMessage;
+    setTypedMessage('');
+    
+    // Optimistic local update
     const newMsg = {
       id: Date.now(),
       recipient: activeChatRecipient,
       sender: 'user',
-      text: typedMessage,
+      text,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       read: true
     };
-    setChatMessages([...chatMessages, newMsg]);
-    setTypedMessage('');
+    setChatMessages(prev => [...prev, newMsg]);
+
+    // Try posting to backend (receiver would be assigned lawyer / admin)
+    try {
+      const assignedApp = applications.find(a => a.assignedLawyer && a.assignedLawyer._id);
+      if (assignedApp) {
+        await axios.post('/messages', {
+          receiver: assignedApp.assignedLawyer._id || assignedApp.assignedLawyer,
+          application: assignedApp._id,
+          text,
+        });
+      }
+    } catch (err) {
+      console.warn('Message backend sync failed (UI only):', err.message);
+    }
   };
 
   // Comparison toggle helper
@@ -552,7 +602,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
                 <div>
                   <p className="text-[10px] font-bold text-blue-500 dark:text-blue-450 uppercase tracking-wider">Upcoming Hearings</p>
                   <p className="text-3xl font-extrabold text-slate-800 dark:text-white mt-1.5" style={{ fontFamily: 'var(--font-display)' }}>
-                    1
+                    {upcomingHearingsCount}
                   </p>
                 </div>
                 <div className="h-8 w-8 rounded-full bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center text-blue-600 dark:text-blue-450">
@@ -575,7 +625,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
                 <div>
                   <p className="text-[10px] font-bold text-purple-500 dark:text-purple-450 uppercase tracking-wider">Pending Documents</p>
                   <p className="text-3xl font-extrabold text-slate-800 dark:text-white mt-1.5" style={{ fontFamily: 'var(--font-display)' }}>
-                    {documents.filter(d => d.status === 'Pending Review').length}
+                    {documents.filter(d => d.status === 'Pending' || d.verificationStatus === 'Pending').length}
                   </p>
                 </div>
                 <div className="h-8 w-8 rounded-full bg-purple-50 dark:bg-purple-950/30 flex items-center justify-center text-purple-600 dark:text-purple-450">
@@ -710,12 +760,29 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
 
               {/* Recent Notifications logs panel */}
               <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm space-y-3">
-                <h3 className="text-xs font-extrabold uppercase text-slate-400 tracking-wider">Recent Activity Logs</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-extrabold uppercase text-slate-400 tracking-wider">Recent Activity Logs</h3>
+                  {notifications.filter(n => !n.read).length > 0 && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          await axios.patch('/notifications/read-all');
+                          setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+                        } catch (e) { /* silent */ }
+                      }}
+                      className="text-[9px] font-bold text-blue-600 hover:underline"
+                    >
+                      Mark all read
+                    </button>
+                  )}
+                </div>
                 <div className="space-y-2">
-                  {notifications.map((n) => (
-                    <div key={n.id} className="text-xs py-1.5 border-b border-slate-100 dark:border-slate-800 last:border-none">
-                      <p className="font-bold text-slate-800 dark:text-white">{n.title}</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">{n.body}</p>
+                  {notifications.length === 0 ? (
+                    <p className="text-[10px] text-slate-400 text-center py-3">No notifications yet.</p>
+                  ) : notifications.slice(0, 5).map((n) => (
+                    <div key={n._id || n.id} className={`text-xs py-1.5 border-b border-slate-100 dark:border-slate-800 last:border-none ${!n.read ? 'font-bold' : ''}`}>
+                      <p className="text-slate-800 dark:text-white">{n.message || n.title}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{n.category || 'Update'} · {new Date(n.createdAt || Date.now()).toLocaleDateString()}</p>
                     </div>
                   ))}
                 </div>
@@ -1246,6 +1313,19 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
 
             {/* Document listings table */}
             <div className="overflow-x-auto">
+              <input type="file" ref={fileInputRef} className="hidden" onChange={handleRealFileUpload} />
+              {documents.length === 0 ? (
+                <div className="text-center py-10 text-slate-400">
+                  <FileText size={32} className="mx-auto mb-2 opacity-30" />
+                  <p className="text-xs">No documents uploaded yet.</p>
+                  <button
+                    onClick={handleDocumentUpload}
+                    className="mt-3 btn-primary text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 mx-auto"
+                  >
+                    <Upload size={14} /> Upload First Document
+                  </button>
+                </div>
+              ) : (
               <table className="premium-table">
                 <thead>
                   <tr>
@@ -1253,7 +1333,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
                     <th>Category</th>
                     <th>File Size</th>
                     <th>Upload Date</th>
-                    <th>Verification status</th>
+                    <th>Verification Status</th>
                     <th className="text-right">Action</th>
                   </tr>
                 </thead>
@@ -1271,24 +1351,36 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
                       <td>{doc.date}</td>
                       <td>
                         <span className={`badge ${
-                          doc.status === 'Approved' ? 'badge-green' : 'badge-amber'
+                          doc.status === 'Verified' ? 'badge-green' :
+                          doc.status === 'Rejected' ? 'badge-red' : 'badge-amber'
                         }`}>
                           {doc.status}
                         </span>
                       </td>
                       <td className="text-right">
                         <div className="inline-flex gap-2">
-                          <button
-                            onClick={() => alert(`Document Preview: ${doc.name}`)}
-                            className="p-1 rounded bg-slate-100 hover:bg-slate-250 text-xs text-slate-700"
+                          <a
+                            href={`http://localhost:5000/uploads/${doc.filename || doc.name}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-xs text-slate-700"
                           >
-                            Preview
-                          </button>
+                            View
+                          </a>
                           <button
-                            onClick={() => setDocuments(documents.filter(d => d.id !== doc.id))}
+                            onClick={async () => {
+                              if (confirm(`Delete document '${doc.name}'?`)) {
+                                try {
+                                  await axios.delete(`/documents/${doc.id}`);
+                                  setDocuments(prev => prev.filter(d => d.id !== doc.id));
+                                } catch (err) {
+                                  alert('Could not delete document: ' + err.message);
+                                }
+                              }
+                            }}
                             className="p-1 rounded bg-rose-50 text-rose-600 text-xs hover:bg-rose-100"
                           >
-                            Replace
+                            Delete
                           </button>
                         </div>
                       </td>
@@ -1296,6 +1388,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
                   ))}
                 </tbody>
               </table>
+              )}
             </div>
           </div>
         </div>
@@ -1812,159 +1905,13 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
 
       {/* ── 11. SUBMIT LEGAL AID MULTI-STEP WIZARD MODAL ── */}
       {showApplyModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-850 p-6 max-w-lg w-full space-y-6 shadow-2xl relative">
-            <button onClick={() => setShowApplyModal(false)} className="absolute right-5 top-5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xl font-bold">×</button>
-            
-            <div>
-              <h4 className="text-base font-bold text-slate-900 dark:text-white">Legal Aid Subsidy Application Wizard</h4>
-              <p className="text-xs text-slate-450 mt-1">Complete details to calculate eligibility benchmarks.</p>
-            </div>
-
-            {/* Form Step indicators */}
-            <div className="flex justify-between items-center max-w-xs mx-auto bg-slate-50 dark:bg-slate-900 px-3 py-1.5 rounded-full border border-slate-100 dark:border-slate-800">
-              {[1, 2, 3].map(step => (
-                <span key={step} className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
-                  applyStep === step ? 'bg-blue-600 text-white' : 'text-slate-400'
-                }`}>
-                  Step {step}
-                </span>
-              ))}
-            </div>
-
-            <form onSubmit={handleApplySubmit} className="space-y-4">
-              {applyStep === 1 && (
-                <div className="space-y-4 animate-fade-in">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">Full Name</label>
-                    <input
-                      required value={applyForm.fullName}
-                      onChange={e => setApplyForm({ ...applyForm, fullName: e.target.value })}
-                      className="form-input"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">Date of Birth</label>
-                      <input
-                        type="date" required value={applyForm.dob}
-                        onChange={e => setApplyForm({ ...applyForm, dob: e.target.value })}
-                        className="form-input"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">Gender</label>
-                      <select
-                        value={applyForm.gender}
-                        onChange={e => setApplyForm({ ...applyForm, gender: e.target.value })}
-                        className="form-input"
-                      >
-                        <option>Male</option>
-                        <option>Female</option>
-                        <option>Other</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-450 uppercase mb-1.5">Contact Number</label>
-                    <input
-                      type="text" required placeholder="+94 77 123 4567"
-                      value={applyForm.phone}
-                      onChange={e => setApplyForm({ ...applyForm, phone: e.target.value })}
-                      className="form-input"
-                    />
-                  </div>
-                  <div className="flex justify-end pt-2">
-                    <button type="button" onClick={() => setApplyStep(2)} className="btn-primary text-xs flex items-center gap-1 font-bold">
-                      Next Step <ArrowRight size={13} />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {applyStep === 2 && (
-                <div className="space-y-4 animate-fade-in">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">Occupation</label>
-                      <input
-                        required value={applyForm.occupation}
-                        onChange={e => setApplyForm({ ...applyForm, occupation: e.target.value })}
-                        placeholder="e.g. Farmer" className="form-input"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">Monthly Income (LKR)</label>
-                      <input
-                        type="number" required value={applyForm.monthlyIncome}
-                        onChange={e => setApplyForm({ ...applyForm, monthlyIncome: e.target.value })}
-                        placeholder="e.g. 25000" className="form-input"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">Case Category</label>
-                    <select
-                      value={applyForm.caseType}
-                      onChange={e => setApplyForm({ ...applyForm, caseType: e.target.value })}
-                      className="form-input"
-                    >
-                      <option>Civil Law</option>
-                      <option>Criminal Law</option>
-                      <option>Family Law</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">Brief summary of legal dispute</label>
-                    <textarea
-                      required rows={3} value={applyForm.caseDescription}
-                      onChange={e => setApplyForm({ ...applyForm, caseDescription: e.target.value })}
-                      placeholder="Type boundary details, family disputes context here..."
-                      className="form-input resize-none"
-                    />
-                  </div>
-                  <div className="flex justify-between pt-2">
-                    <button type="button" onClick={() => setApplyStep(1)} className="btn-secondary text-xs flex items-center gap-1 font-bold">
-                      <ArrowLeft size={13} /> Back
-                    </button>
-                    <button type="button" onClick={() => setApplyStep(3)} className="btn-primary text-xs flex items-center gap-1 font-bold">
-                      Next Step <ArrowRight size={13} />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {applyStep === 3 && (
-                <div className="space-y-5 animate-fade-in">
-                  <div className="p-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-850 rounded-2xl text-xs space-y-1.5">
-                    <p><strong>FullName:</strong> {applyForm.fullName}</p>
-                    <p><strong>Dispute specialization:</strong> {applyForm.caseType}</p>
-                    <p><strong>Monthly Household Income:</strong> LKR {applyForm.monthlyIncome}</p>
-                    <p><strong>Auditable Income proof uploaded:</strong> Identity card verified</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="block text-xs font-bold text-slate-400 uppercase">Attach proof of indigency / Income Certificate</label>
-                    <input type="file" ref={fileInputRef} className="hidden" onChange={handleRealFileUpload} />
-                    <button type="button" onClick={handleDocumentUpload} disabled={isUploading} className="w-full py-4 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col items-center justify-center text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 transition text-xs font-bold">
-                      <Upload size={18} className="mb-1" />
-                      {isUploading ? `Uploading progress: ${uploadProgress}%` : 'Attach PDF Document'}
-                    </button>
-                  </div>
-
-                  <div className="flex justify-between pt-2">
-                    <button type="button" onClick={() => setApplyStep(2)} className="btn-secondary text-xs flex items-center gap-1 font-bold">
-                      <ArrowLeft size={13} /> Back
-                    </button>
-                    <button type="submit" className="btn-primary text-xs font-bold">
-                      Submit Legal Aid Request
-                    </button>
-                  </div>
-                </div>
-              )}
-            </form>
-          </div>
-        </div>
+        <RegistrationWizard 
+          onClose={() => setShowApplyModal(false)} 
+          onSuccess={() => {
+            setShowApplyModal(false);
+            fetchDashboardData();
+          }} 
+        />
       )}
 
     </div>

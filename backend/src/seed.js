@@ -16,7 +16,9 @@ const Courtroom = require('./models/Courtroom');
 const Judge = require('./models/Judge');
 const AuditLog = require('./models/AuditLog');
 
-dotenv.config();
+const path = require('path');
+
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const seed = async () => {
   try {
@@ -54,9 +56,34 @@ const seed = async () => {
       name: 'Registrar Perera (Court Staff)',
       email: 'staff@sevenseas.com',
       password: passwordHash,
-      role: 'User', // mapped as CourtStaff via custom check or staff email
+      role: 'CourtStaff',
       location: 'Chennai',
       phone: '9000000006',
+    });
+
+    const judgeUser = await User.create({
+      name: 'Hon. Justice Amarasinghe',
+      email: 'judge@sevenseas.com',
+      password: passwordHash,
+      role: 'Judge',
+      location: 'Colombo',
+      phone: '9000000008',
+      specialization: 'Civil & Criminal Litigation'
+    });
+
+    await Judge.create({
+      userId: judgeUser._id,
+      name: judgeUser.name,
+      courtName: 'High Court of Sri Lanka (District Chambers)',
+      courtroom: 'Courtroom Hall 1',
+      designation: 'High Court Judge',
+      registrationNumber: 'JDG-8821',
+      specialization: 'Civil & Criminal Litigation',
+      jurisdiction: 'Western Province Jurisdiction',
+      yearsServing: 12,
+      status: 'Active',
+      contactEmail: judgeUser.email,
+      phone: judgeUser.phone
     });
 
     // 2. Create 10 Applicants (Users)
@@ -188,6 +215,8 @@ const seed = async () => {
         urgency: i % 3 === 0 ? 'High' : (i % 3 === 1 ? 'Medium' : 'Low'),
         status: appStatuses[i],
         assignedLawyer: i >= 3 ? lawyer.userId : undefined,
+        assignedJudge: judgeUser._id,
+        judge: judgeUser._id,
         occupation: i % 2 === 0 ? 'Clerk' : 'Mechanic',
         monthlyIncome: 15000 + i * 5000,
         verificationStatus: i >= 3 ? 'Verified' : (i === 7 ? 'Rejected' : 'Pending'),
@@ -207,7 +236,8 @@ const seed = async () => {
         application: scheduledApp._id,
         hearingDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days from now
         courtroom: 'Courtroom A',
-        judge: 'Hon. Justice Aisha Verma',
+        judge: judgeUser._id,
+        judgeName: 'Hon. Justice Aisha Verma',
         notes: 'First argument panel hearing — both parties to attend.'
       });
       scheduledApp.hearing = hearing._id;
@@ -241,6 +271,17 @@ const seed = async () => {
       message: 'System database successfully seeded with all mock portfolios.',
       category: 'System'
     });
+    // Notifications for applicants
+    for (let i = 0; i < Math.min(3, applicantUsers.length); i++) {
+      const app = seededApps[i];
+      await Notification.create({
+        user: applicantUsers[i]._id,
+        application: app?._id,
+        message: `Your application "${app?.caseTitle}" has been received and is under review.`,
+        category: 'Update',
+        read: i === 0,
+      });
+    }
 
     console.log('✅ Seven Seas Justice System — Complex Seed data seeded successfully!');
     console.log('─────────────────────────────────────────');

@@ -69,35 +69,28 @@ const CaseTracker = () => {
     }
   };
 
-  // Map application status to horizontal milestones
   const steps = useMemo(() => {
     if (!selectedApp) return [];
-    const status = selectedApp.status;
-    const isSubmitted = true;
-    const isVerification = ['Verification', 'Under Review', 'LawyerAssigned', 'CourtScheduled', 'Hearing', 'Judgment', 'Completed'].includes(status);
-    const isCounselMatched = ['LawyerAssigned', 'CourtScheduled', 'Hearing', 'Judgment', 'Completed'].includes(status) && !!selectedApp.assignedLawyer;
-    const isHearingScheduled = ['CourtScheduled', 'Hearing', 'Judgment', 'Completed'].includes(status) && !!selectedApp.hearing;
-    const isResolved = ['Judgment', 'Completed', 'Rejected'].includes(status);
+    
+    const timelineSteps = (selectedApp.timeline || []).map((t, idx) => ({
+      id: idx + 1,
+      label: t.status,
+      complete: true,
+      active: false,
+      desc: t.note || 'Milestone achieved'
+    }));
+    
+    if (selectedApp.status !== 'Completed' && selectedApp.status !== 'Rejected') {
+      timelineSteps.push({
+        id: timelineSteps.length + 1,
+        label: 'In Progress',
+        complete: false,
+        active: true,
+        desc: 'Awaiting next updates'
+      });
+    }
 
-    const verStatus = selectedApp.verificationStatus || 'Pending';
-
-    return [
-      { id: 1, label: 'Submission', complete: isSubmitted, desc: 'Docket created' },
-      { 
-        id: 2, 
-        label: 'Income Check', 
-        complete: verStatus === 'Verified' || isVerification, 
-        active: verStatus === 'Pending' && (status === 'Verification' || status === 'Under Review' || status === 'Submitted'), 
-        desc: verStatus === 'Verified' 
-          ? 'Indigent approved' 
-          : verStatus === 'Rejected' 
-          ? 'Verification Rejected' 
-          : 'Under audit review' 
-      },
-      { id: 3, label: 'Counsel Match', complete: isCounselMatched, active: status === 'LawyerAssigned' && !selectedApp.hearing, desc: isCounselMatched ? (selectedApp.assignedLawyer?.name || 'Counsel assigned') : 'Awaiting counsel' },
-      { id: 4, label: 'Hearing Scheduled', complete: isHearingScheduled, active: (status === 'CourtScheduled' || status === 'Hearing') && !isResolved, desc: isHearingScheduled ? `Room: ${selectedApp.hearing?.courtroom || 'Courtroom A'}` : 'Pending schedule' },
-      { id: 5, label: 'Resolution', complete: isResolved, active: isResolved && status !== 'Completed', desc: isResolved ? `Status: ${status}` : 'Mediation pending' },
-    ];
+    return timelineSteps;
   }, [selectedApp]);
 
   // Construct events from timeline and hearing details

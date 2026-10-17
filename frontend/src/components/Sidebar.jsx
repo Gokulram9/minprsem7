@@ -6,7 +6,7 @@ import {
   Users, Scale, ShieldAlert, FolderOpen, Calendar,
   Sparkles, BarChart2, ChevronLeft, MessageSquare, User,
   Home, LogOut, Settings, ArrowUpRight, Zap, Shield,
-  ChevronDown, Search
+  ChevronDown, Search, Gavel
 } from 'lucide-react';
 
 const Sidebar = ({ collapsed, onToggle }) => {
@@ -54,7 +54,23 @@ const Sidebar = ({ collapsed, onToggle }) => {
     { to: '/dashboard/profile',      label: 'Profile',        icon: User,           group: 'account' },
   ];
 
-  const menuItems = role === 'Admin' ? adminMenuItems : (role === 'Lawyer' ? lawyerMenuItems : userMenuItems);
+  const judgeMenuItems = [
+    { to: '/dashboard', end: true,  label: 'Dashboard',       icon: Home,           group: 'overview' },
+    { to: '/dashboard/assigned-cases',label: 'My Cases',       icon: Scale,          group: 'workspace' },
+    { to: '/dashboard/todays-hearings',label: "Today's Bench", icon: Gavel,          group: 'workspace' },
+    { to: '/dashboard/schedule',     label: 'Calendar',       icon: Calendar,       group: 'workspace' },
+    { to: '/dashboard/documents',    label: 'Documents',      icon: FolderOpen,     group: 'workspace' },
+    { to: '/dashboard/judgments',    label: 'Precedents',     icon: Scale,          group: 'intelligence' },
+    { to: '/dashboard/profile',      label: 'Chambers Profile', icon: User,         group: 'account' },
+  ];
+
+  const menuItems = role === 'Admin' 
+    ? adminMenuItems 
+    : role === 'Lawyer' 
+    ? lawyerMenuItems 
+    : role === 'Judge' 
+    ? judgeMenuItems 
+    : userMenuItems;
 
   const filteredMenuItems = menuItems.filter(item =>
     item.label.toLowerCase().includes(searchQuery.toLowerCase())
@@ -78,6 +94,7 @@ const Sidebar = ({ collapsed, onToggle }) => {
   const roleConfig = {
     Admin:    { label: 'System Control', color: '#8B5CF6', bg: 'rgba(139,92,246,0.12)', border: 'rgba(139,92,246,0.2)' },
     Lawyer:   { label: 'Lawyer Portal',  color: '#3B82F6', bg: 'rgba(59,130,246,0.12)',  border: 'rgba(59,130,246,0.2)' },
+    Judge:    { label: 'Judicial Bench', color: '#9333EA', bg: 'rgba(147,51,234,0.12)',  border: 'rgba(147,51,234,0.2)' },
     User:     { label: 'Citizen Space',  color: '#B69D74', bg: 'rgba(182,157,116,0.12)', border: 'rgba(182,157,116,0.2)' },
     Applicant:{ label: 'Citizen Space',  color: '#B69D74', bg: 'rgba(182,157,116,0.12)', border: 'rgba(182,157,116,0.2)' },
   };

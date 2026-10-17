@@ -1,6 +1,8 @@
 const express = require('express');
 const {
   updateLawyerProfile,
+  getLawyerStats,
+  getMyLawyerProfile,
   getLawyers,
   getLawyerById,
   updateAvailability,
@@ -14,6 +16,8 @@ const { authorizeRoles } = require('../middleware/roleMiddleware');
 
 const router = express.Router();
 
+router.get('/me/stats', protect, authorizeRoles('Lawyer'), getLawyerStats);
+router.get('/me/profile', protect, authorizeRoles('Lawyer'), getMyLawyerProfile);
 router.get('/', getLawyers);
 router.get('/filter', filterLawyers);
 router.get('/:id', getLawyerById);

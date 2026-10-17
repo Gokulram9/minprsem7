@@ -4,7 +4,7 @@ import { AuthContext } from '../contexts/AuthContext';
 import axios from '../api/axios';
 import {
   Eye, EyeOff, Scale, Crown, User, ArrowRight,
-  CheckCircle, Shield, Sparkles, Lock, Mail, AlertCircle
+  CheckCircle, Shield, Sparkles, Lock, Mail, AlertCircle, Gavel
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import { motion } from 'framer-motion';
@@ -31,6 +31,17 @@ const ROLES = [
     desc: 'Manage hearings and client cases',
     bg: 'rgba(182,157,116,0.08)',
     border: 'rgba(182,157,116,0.25)',
+  },
+  {
+    id: 'Judge',
+    label: 'Judge',
+    icon: Gavel,
+    color: '#9333EA',
+    grad: 'linear-gradient(135deg,#7E22CE,#9333EA)',
+    email: 'judge@sevenseas.com',
+    desc: 'Preside over hearings & litigation',
+    bg: 'rgba(147,51,234,0.08)',
+    border: 'rgba(147,51,234,0.25)',
   },
   {
     id: 'Admin',
