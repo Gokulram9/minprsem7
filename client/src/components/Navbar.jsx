@@ -90,12 +90,26 @@ const Navbar = () => {
     }
   };
 
-  const userName = user?.name ? user.name.split(' ')[0] : 'User';
+  const getFormattedName = () => {
+    if (!user?.name) return 'User';
+    if (user?.role === 'Judge') {
+      return user.name.replace(/^Hon\.\s*/i, '');
+    }
+    if (user?.role === 'Lawyer' && user.name.startsWith('Advocate ')) {
+      return user.name.replace('Advocate ', 'Adv. ');
+    }
+    return user.name;
+  };
+
+  const userName = getFormattedName();
   const userRole  = user?.role  || 'Guest';
-  const userInitial = userName.charAt(0).toUpperCase();
+  const userInitial = user?.role === 'Judge'
+    ? (userName.replace(/^Justice\s*/i, '').charAt(0) || 'J').toUpperCase()
+    : (userName.charAt(0) || 'U').toUpperCase();
 
   const roleMeta = {
     Admin:     { label: 'Super Admin',   color: '#8B5CF6', bg: 'rgba(139,92,246,0.12)', border: 'rgba(139,92,246,0.25)', grad: 'linear-gradient(135deg,#6D28D9,#8B5CF6)' },
+    Judge:     { label: 'Judicial Bench', color: '#9333EA', bg: 'rgba(147,51,234,0.12)', border: 'rgba(147,51,234,0.25)', grad: 'linear-gradient(135deg,#7E22CE,#9333EA)' },
     Lawyer:    { label: 'Legal Counsel', color: '#3B82F6', bg: 'rgba(59,130,246,0.12)',  border: 'rgba(59,130,246,0.25)',  grad: 'linear-gradient(135deg,#1D4ED8,#3B82F6)' },
     User:      { label: 'Applicant',     color: '#B69D74', bg: 'rgba(182,157,116,0.12)', border: 'rgba(182,157,116,0.25)', grad: 'linear-gradient(135deg,#9A7E55,#B69D74)' },
     Applicant: { label: 'Applicant',     color: '#B69D74', bg: 'rgba(182,157,116,0.12)', border: 'rgba(182,157,116,0.25)', grad: 'linear-gradient(135deg,#9A7E55,#B69D74)' },
@@ -148,16 +162,15 @@ const Navbar = () => {
             </button>
           )}
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1F2839] to-[#0D1526] text-[#B69D74] shadow-lg transition-transform group-hover:scale-105">
-              <Logo className="h-6 w-6 text-[#B69D74]" strokeWidth={2} />
-              <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-500 dark:border-slate-900" style={{ boxShadow: '0 0 8px #10B981' }} />
+            <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#202A3B] to-[#121824] text-[#B69B72] shadow-lg transition-transform group-hover:scale-105 border border-[#B69B72]/20">
+              <Logo className="h-6 w-6 text-[#B69B72]" strokeWidth={2} />
             </div>
             <div className="flex flex-col -gap-0.5">
               <span
                 className="text-[15px] font-black leading-none tracking-[0.1em] uppercase"
                 style={{
                   fontFamily: 'var(--font-display)',
-                  background: 'linear-gradient(90deg, #B69D74 0%, #E6D5B8 50%, #9A7E55 100%)',
+                  background: 'linear-gradient(90deg, #B69B72 0%, #D9C7A5 50%, #9A7E55 100%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                   backgroundClip: 'text',
@@ -173,13 +186,13 @@ const Navbar = () => {
         </div>
 
         {/* MIDDLE NAV LINKS & MEGA MENU */}
-        <nav className="hidden items-center gap-1 text-sm font-semibold text-[#1F2839] dark:text-slate-300 lg:flex">
+        <nav className="hidden items-center gap-1 text-sm font-semibold text-[#202A3B] dark:text-slate-300 lg:flex">
           <NavLink
             to="/"
             end
             className={({ isActive }) =>
-              `relative rounded-full px-4 py-2 transition hover:text-[#B69D74] dark:hover:text-[#B69D74] hover:bg-[#B69D74]/8 ${
-                isActive ? 'text-[#B69D74] dark:text-[#B69D74] bg-[#B69D74]/8 font-bold' : ''
+              `relative rounded-full px-4 py-2 transition hover:text-[#B69B72] dark:hover:text-[#B69B72] hover:bg-[#B69B72]/8 ${
+                isActive ? 'text-[#B69B72] dark:text-[#B69B72] bg-[#B69B72]/8 font-bold' : ''
               }`
             }
           >
@@ -192,11 +205,11 @@ const Navbar = () => {
               type="button" 
               onClick={() => {
                 setMegaMenuOpen(!megaMenuOpen);
-                setNotifOpen(false);
+                setShowNotifs(false);
                 setProfileOpen(false);
               }}
-              className={`flex items-center gap-1 rounded-full px-4 py-2 transition hover:text-[#B69D74] dark:hover:text-[#B69D74] hover:bg-[#B69D74]/8 ${
-                isPortalServicesActive ? 'text-[#B69D74] dark:text-[#B69D74] bg-[#B69D74]/8 font-bold' : ''
+              className={`flex items-center gap-1 rounded-full px-4 py-2 transition hover:text-[#B69B72] dark:hover:text-[#B69B72] hover:bg-[#B69B72]/8 ${
+                isPortalServicesActive ? 'text-[#B69B72] dark:text-[#B69B72] bg-[#B69B72]/8 font-bold' : ''
               }`}
             >
               Portal Services <ChevronDown size={14} className={`transform transition-transform ${megaMenuOpen ? 'rotate-180' : ''}`} />
@@ -297,12 +310,14 @@ const Navbar = () => {
 
 
 
-          {/* AI Button */}
-          <button className="topbar-ai-btn group" onClick={() => navigate('/dashboard/ai-recommend')}>
-            <Sparkles size={11} className="text-[#B69D74] group-hover:animate-spin transition-all" />
-            <span>Ask AI</span>
-            <span className="topbar-ai-pulse" />
-          </button>
+          {/* AI Button - ONLY FOR CITIZEN USER / APPLICANT */}
+          {(user?.role === 'User' || user?.role === 'Applicant') && (
+            <button className="topbar-ai-btn group" onClick={() => navigate('/dashboard/ai-recommend')}>
+              <Sparkles size={11} className="text-[#B69D74] group-hover:animate-spin transition-all" />
+              <span>Ask AI</span>
+              <span className="topbar-ai-pulse" />
+            </button>
+          )}
 
           <div className="topbar-divider" />
 
@@ -408,7 +423,21 @@ const Navbar = () => {
                       </span>
                     </div>
 
-                    <div className="mt-4 border-t border-slate-100 pt-3 dark:border-slate-800">
+                    <div className="py-2 border-b border-slate-100 dark:border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProfileOpen(false);
+                          navigate('/dashboard/profile');
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-xl transition cursor-pointer"
+                      >
+                        <User size={14} className="text-[#B69B72]" />
+                        <span>View Profile & Credentials</span>
+                      </button>
+                    </div>
+
+                    <div className="mt-2 pt-1">
                       <button
                         type="button"
                         onClick={() => {

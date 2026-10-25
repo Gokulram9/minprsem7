@@ -22,7 +22,12 @@ const judgmentRoutes = require('./routes/judgmentRoutes');
 const lawyerRoutes = require('./routes/lawyerRoutes');
 const chatbotRoutes = require('./routes/chatbotRoutes');
 const casePartyRoutes = require('./routes/casePartyRoutes');
+const judgeRoutes = require('./routes/judgeRoutes');
 const { errorHandler, notFound } = require('./middleware/errorMiddleware');
+const morgan = require('morgan');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./config/swagger');
+const logger = require('./utils/logger');
 
 dotenv.config();
 
@@ -30,15 +35,29 @@ const app = express();
 const server = http.createServer(app);
 initializeSocket(server);
 
+// Setup Morgan request log streaming into Winston
+const morganFormat = process.env.NODE_ENV === 'production' ? 'combined' : 'dev';
+app.use(morgan(morganFormat, {
+  stream: {
+    write: (message) => logger.info(message.trim())
+  }
+}));
+
 app.use(helmet());
 app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5175' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+const rootUploads = path.join(__dirname, '..', 'uploads');
+const serverUploads = path.join(__dirname, 'uploads');
+if (!require('fs').existsSync(rootUploads)) require('fs').mkdirSync(rootUploads, { recursive: true });
+if (!require('fs').existsSync(serverUploads)) require('fs').mkdirSync(serverUploads, { recursive: true });
+app.use('/uploads', express.static(rootUploads));
+app.use('/uploads', express.static(serverUploads));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 120,
+  max: process.env.NODE_ENV === 'production' ? 120 : 2000,
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -59,6 +78,7 @@ app.use('/api/judgments', judgmentRoutes);
 app.use('/api/lawyers', lawyerRoutes);
 app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/cases', casePartyRoutes);
+app.use('/api/judge', judgeRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', message: 'Legal Aid Portal API is running.' });

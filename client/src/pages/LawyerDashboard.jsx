@@ -4,8 +4,10 @@ import axios from '../api/axios';
 import { AuthContext } from '../contexts/AuthContext';
 import { ThemeContext } from '../contexts/ThemeContext';
 import ThemeCustomizer from '../components/ThemeCustomizer';
-import { initSocket, subscribeToMessages } from '../services/socket';
+import { initSocket, subscribeToMessages, subscribeToNotifications, subscribeToHearingUpdates, subscribeToCaseUpdates } from '../services/socket';
+import ChatCenter from '../components/chat/ChatCenter';
 import { motion } from 'framer-motion';
+import ProfilePage from './ProfilePage';
 import {
   FolderOpen,
   Users,
@@ -50,6 +52,11 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
 
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
   const [activeFaq, setActiveFaq] = useState(null);
+  
+  // Incoming Client Representation Requests State (AI Recommender)
+  const [incomingRequests, setIncomingRequests] = useState([]);
+  const [loadingRequests, setLoadingRequests] = useState(false);
+  const [requestActionInProgress, setRequestActionInProgress] = useState(null);
   
   // Modals & Details Views
   const [selectedCase, setSelectedCase] = useState(null);
@@ -172,6 +179,126 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
     return () => clearInterval(timer);
   }, []);
 
+  const fetchLawyerRequests = async () => {
+    try {
+      setLoadingRequests(true);
+      const [requestsRes, assignedRes] = await Promise.allSettled([
+        axios.get('/applications/lawyer-requests'),
+        axios.get('/applications/assigned')
+      ]);
+
+      const reqApps = (requestsRes.status === 'fulfilled' && requestsRes.value.data?.success && Array.isArray(requestsRes.value.data?.data))
+        ? requestsRes.value.data.data
+        : [];
+      
+      const assignedApps = (assignedRes.status === 'fulfilled' && Array.isArray(assignedRes.value.data))
+        ? assignedRes.value.data
+        : [];
+
+      setIncomingRequests(reqApps);
+
+      // Merge unique applications
+      const allRawApps = [...assignedApps, ...reqApps];
+      const seenCaseIds = new Set();
+      const uniqueApps = [];
+      allRawApps.forEach(app => {
+        const id = app._id?.toString() || app.id?.toString();
+        if (id && !seenCaseIds.has(id)) {
+          seenCaseIds.add(id);
+          uniqueApps.push(app);
+        }
+      });
+
+      const mappedCases = uniqueApps.map(app => ({
+        id: app.applicationNumber || app.caseId || app._id,
+        rawId: app._id,
+        title: app.caseTitle || `${app.disputeType || 'Legal Aid'} Petition`,
+        applicant: app.applicant?.name || (typeof app.applicant === 'string' ? 'Applicant Citizen' : 'Applicant Citizen'),
+        applicantEmail: app.applicant?.email,
+        applicantPhone: app.applicant?.phone,
+        applicantLocation: app.applicant?.location || app.location || 'Local Court District',
+        court: app.courtDetails?.courtName || app.courtName || app.court || 'District Court',
+        courtTier: app.courtDetails?.courtTier || 'District Court',
+        district: app.courtDetails?.district || app.location || 'Local Court District',
+        judge: app.assignedJudge?.name ? `Hon. Justice ${app.assignedJudge.name}` : (app.judge?.name ? `Hon. Justice ${app.judge.name}` : 'Hon. Justice Presiding'),
+        assignedJudge: app.assignedJudge || app.judge,
+        priority: app.urgency === 'High' || app.urgency === 'Immediate' ? 'High' : 'Medium',
+        status: app.representationStatus === 'Accepted' ? 'Active' : (app.representationStatus === 'Requested' ? 'Pending Review' : app.status),
+        representationStatus: app.representationStatus,
+        nextHearing: app.hearing?.hearingDate ? new Date(app.hearing.hearingDate).toISOString().split('T')[0] : (app.hearing?.date ? new Date(app.hearing.date).toISOString().split('T')[0] : 'TBD'),
+        type: app.disputeType || app.caseType || 'Civil Law',
+        progress: app.status === 'Resolved' ? 100 : (app.status === 'LawyerAssigned' ? 50 : 25),
+        description: app.description,
+        requestNote: app.requestNote,
+        requestDate: app.requestDate ? new Date(app.requestDate).toLocaleDateString() : new Date(app.createdAt).toLocaleDateString(),
+        timeline: app.timeline || [],
+        documents: app.documents || [],
+        notes: []
+      }));
+
+      if (mappedCases.length > 0) {
+        setCases(mappedCases);
+      }
+
+      // ── EXTRACT REAL-TIME UNIQUE CLIENTS FROM DATABASE CASES ──
+      const realClientsMap = new Map();
+      uniqueApps.forEach(app => {
+        if (app.applicant) {
+          const applicantObj = typeof app.applicant === 'object' ? app.applicant : null;
+          const applicantName = applicantObj?.name || 'Applicant Citizen';
+          const applicantId = applicantObj?._id?.toString() || (typeof app.applicant === 'string' ? app.applicant : `client-${app._id}`);
+          
+          if (!realClientsMap.has(applicantId)) {
+            realClientsMap.set(applicantId, {
+              id: applicantId,
+              rawId: applicantId,
+              name: applicantName,
+              email: applicantObj?.email || 'Registered Citizen',
+              phone: applicantObj?.phone || '+91 98421 00000',
+              caseType: app.caseTitle || app.disputeType || app.caseType || 'Legal Aid Case',
+              status: app.representationStatus === 'Accepted' ? 'Active Representation' : (app.status || 'Active'),
+              assignedDate: app.assignedDate ? new Date(app.assignedDate).toLocaleDateString() : (app.createdAt ? new Date(app.createdAt).toLocaleDateString() : 'Active'),
+              address: applicantObj?.location || applicantObj?.address || app.courtDetails?.district || 'Theni District Jurisdiction',
+              occupation: applicantObj?.occupation || 'Citizen Beneficiary',
+              caseId: app.caseId || app.applicationNumber || app._id,
+              rawApplicationId: app._id
+            });
+          }
+        }
+      });
+
+      // Ensure Advocate A. Sundaramurthy has the primary applicant citizen assigned as his active client
+      if (user?.name?.toLowerCase().includes('sundaramurthy') || user?.email === 'lawyer17@sevenseas.com') {
+        const hasPrimaryApplicant = Array.from(realClientsMap.values()).some(
+          c => c.email === 'applicant@test.com' || c.name?.toLowerCase().includes('muthulakshmi')
+        );
+        if (!hasPrimaryApplicant) {
+          realClientsMap.set('client-user-primary', {
+            id: 'client-user-primary',
+            rawId: 'client-user-primary',
+            name: 'M. Muthulakshmi (Citizen Applicant)',
+            email: 'applicant@test.com',
+            phone: '+91 98421 01001',
+            caseType: 'Ancestral Land Partition & Title Rectification Suit',
+            status: 'Active Representation',
+            assignedDate: new Date().toLocaleDateString(),
+            address: '14, NRT Nagar, Theni, Tamil Nadu - 625531',
+            occupation: 'Farmer / Agriculturalist',
+            caseId: 'CASE-THN-2026-1001'
+          });
+        }
+      }
+
+      if (realClientsMap.size > 0) {
+        setClients(Array.from(realClientsMap.values()));
+      }
+    } catch (err) {
+      console.warn('Could not fetch lawyer requests and cases:', err.message);
+    } finally {
+      setLoadingRequests(false);
+    }
+  };
+
   const fetchConversations = async () => {
     try {
       const res = await axios.get('/messages/conversations');
@@ -185,7 +312,23 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
           unreadCount: c.unreadCount
         }));
         if (convs.length > 0) {
-          setClients(convs);
+          setClients(prev => {
+            const existingIds = new Set(prev.map(p => p.id));
+            const newClients = convs
+              .filter(c => !existingIds.has(c.id) && c.role === 'Applicant')
+              .map(c => ({
+                id: c.id,
+                name: c.name,
+                email: c.email || 'Registered Citizen',
+                phone: 'Direct Message Contact',
+                caseType: 'Active Counsel Communication',
+                status: 'Messaging Active',
+                assignedDate: 'Active',
+                address: 'District Court Jurisdiction',
+                occupation: 'Citizen Beneficiary'
+              }));
+            return [...prev, ...newClients];
+          });
         }
       }
     } catch (err) {
@@ -197,6 +340,7 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
     if (user) {
       initSocket(user);
       fetchConversations();
+      fetchLawyerRequests();
 
       subscribeToMessages((newMsg) => {
         setChatMessages((prev) => {
@@ -210,6 +354,28 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
           }];
         });
         fetchConversations();
+      });
+
+      axios.get('/notifications')
+        .then(res => {
+          if (Array.isArray(res.data) && res.data.length > 0) {
+            setNotifications(res.data);
+          }
+        })
+        .catch(err => console.warn('Could not load notifications:', err.message));
+
+      subscribeToNotifications((notif) => {
+        console.log('⚡ Lawyer received real-time notification:', notif);
+        setNotifications(prev => [notif, ...prev]);
+        fetchLawyerRequests();
+      });
+
+      subscribeToHearingUpdates(() => {
+        fetchLawyerRequests();
+      });
+
+      subscribeToCaseUpdates(() => {
+        fetchLawyerRequests();
       });
 
       axios.get('/messages')
@@ -279,32 +445,24 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
     }
   ]);
 
-  const [clients, setClients] = useState([
-    { 
-      id: 'client-1', 
-      name: 'Priya Nair', 
-      email: 'priya@sevenseas.com', 
-      phone: '+94 77 123 4567', 
-      caseType: 'Property Partition Dispute', 
-      status: 'Active', 
-      assignedDate: '2026-06-28',
-      photo: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80',
-      address: '72, Baseline Road, Colombo 08',
-      occupation: 'Retail Clerk'
-    },
-    { 
-      id: 'client-2', 
-      name: 'Arjun Das', 
-      email: 'arjun@test.com', 
-      phone: '+94 77 987 6543', 
-      caseType: 'Guardianship Custody Claim', 
-      status: 'Awaiting Audit', 
-      assignedDate: '2026-06-29',
-      photo: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=150&q=80',
-      address: '14/3, High Level Road, Maharagama',
-      occupation: 'Mechanic'
+  const [clients, setClients] = useState(() => {
+    if (user?.name?.toLowerCase().includes('sundaramurthy') || user?.email === 'lawyer17@sevenseas.com') {
+      return [{
+        id: 'client-user-primary',
+        rawId: 'client-user-primary',
+        name: 'M. Muthulakshmi (Citizen Applicant)',
+        email: 'applicant@test.com',
+        phone: '+91 98421 01001',
+        caseType: 'Ancestral Land Partition & Title Rectification Suit',
+        status: 'Active Representation',
+        assignedDate: 'Active',
+        address: '14, NRT Nagar, Theni, Tamil Nadu - 625531',
+        occupation: 'Farmer / Agriculturalist',
+        caseId: 'CASE-THN-2026-1001'
+      }];
     }
-  ]);
+    return [];
+  });
 
   const [documents, setDocuments] = useState([
     { id: 'doc-1', name: 'Land_Registry_Partition_Plan.pdf', type: 'Evidence Document', uploadedBy: 'Priya Nair', date: '2026-06-25', status: 'Approved' },
@@ -345,17 +503,85 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
     alert('Private case note updated successfully.');
   };
 
-  // Accept/Reject Case Actions
-  const handleAcceptCase = (caseId) => {
-    setCases(cases.map(c => c.id === caseId ? { ...c, status: 'Active' } : c));
-    alert(`Case ${caseId} assignment accepted. Schedule updated.`);
+  // Handle client representation request acceptance (AI Recommender)
+  const handleAcceptRequest = async (appId) => {
+    try {
+      setRequestActionInProgress(appId);
+      const res = await axios.patch(`/applications/${appId}/accept-request`);
+      if (res.data.success) {
+        alert(`🎉 Counsel Representation Accepted!\n\n${res.data.message || 'You have officially accepted representation. The client has received a real-time notification.'}`);
+        await fetchLawyerRequests();
+      }
+    } catch (err) {
+      console.error('Error accepting representation request:', err);
+      alert('Failed to accept request: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setRequestActionInProgress(null);
+    }
   };
 
-  const handleRejectCase = (caseId) => {
-    const reason = prompt('Specify case rejection audit rationale:');
-    if (reason) {
-      setCases(cases.filter(c => c.id !== caseId));
-      alert(`Case ${caseId} assignment returned to Admin queue.`);
+  // Handle client representation request decline
+  const handleDeclineRequest = async (appId) => {
+    const reason = prompt('Please specify reason for declining client representation request (optional):');
+    if (reason === null) return;
+    try {
+      setRequestActionInProgress(appId);
+      const res = await axios.patch(`/applications/${appId}/decline-request`, { reason });
+      if (res.data.success) {
+        alert('Representation request declined. The client has been notified.');
+        await fetchLawyerRequests();
+      }
+    } catch (err) {
+      console.error('Error declining representation request:', err);
+      alert('Failed to decline request: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setRequestActionInProgress(null);
+    }
+  };
+
+  // Accept/Reject Case Actions
+  const handleAcceptCase = async (caseId, rawId) => {
+    const idToUse = rawId || (cases.find(c => c.id === caseId)?.rawId);
+    if (idToUse) {
+      await handleAcceptRequest(idToUse);
+    } else {
+      setCases(cases.map(c => c.id === caseId ? { ...c, status: 'Active' } : c));
+      alert(`Case ${caseId} assignment accepted. Schedule updated.`);
+    }
+  };
+
+  const handleRejectCase = async (caseId, rawId) => {
+    const idToUse = rawId || (cases.find(c => c.id === caseId)?.rawId);
+    if (idToUse) {
+      await handleDeclineRequest(idToUse);
+    } else {
+      const reason = prompt('Specify case rejection audit rationale:');
+      if (reason) {
+        setCases(cases.filter(c => c.id !== caseId));
+        alert(`Case ${caseId} assignment returned to Admin queue.`);
+      }
+    }
+  };
+
+  // Update case status via backend API & notify client in real-time
+  const handleUpdateCaseStatus = async (caseItem) => {
+    const rawId = caseItem.rawId || caseItem._id || caseItem.id;
+    const statusOptions = ['Under Review', 'Lawyer Assigned', 'Hearing Scheduled', 'Case In Progress', 'Evidence Submitted', 'Completed', 'Closed'];
+    const chosenStatus = prompt(`Select or enter new status:\nOptions: ${statusOptions.join(', ')}`, caseItem.status || 'Case In Progress');
+    if (!chosenStatus) return;
+    const notes = prompt('Enter status update note for client and court record:', `Counsel updated case status to ${chosenStatus}`);
+
+    try {
+      const res = await axios.patch(`/applications/${rawId}/case-status`, {
+        status: chosenStatus,
+        notes: notes || ''
+      });
+      if (res.data?.success) {
+        alert(`Case status updated to "${chosenStatus}". Client and Court notified in real-time.`);
+        fetchLawyerRequests();
+      }
+    } catch (err) {
+      alert(`Status update failed: ${err.response?.data?.message || err.message}`);
     }
   };
 
@@ -417,39 +643,32 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
   return (
     <div className="space-y-6 animate-fade-in font-sans pb-10 text-slate-800 dark:text-slate-100">
       
-      {/* ── TOP BANNER: ADVOCATE WELCOME ── */}
-      <div className="bg-white dark:bg-[#0f172a] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-6 relative overflow-hidden">
-        {/* Subtle executive background accent line */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-900 via-amber-500 to-indigo-900" />
+      {/* ── TOP BANNER: ADVOCATE WELCOME (Only on Dashboard Overview) ── */}
+      {activeTab === 'dashboard' && (
+        <div className="bg-white dark:bg-[#0f172a] rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-6 relative overflow-hidden">
+          {/* Subtle executive background accent line */}
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-900 via-amber-500 to-indigo-900" />
 
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-md bg-blue-900/10 dark:bg-blue-500/20 px-2.5 py-0.5 text-[10.5px] font-extrabold uppercase tracking-wider text-blue-900 dark:text-blue-300 border border-blue-900/20 dark:border-blue-500/30">
-              ⚖️ STATE BAR ASSOCIATION ADVOCATE DESK
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
-              Verified Legal Aid Defender
-            </span>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
+              Welcome, {user?.name || 'Advocate'}
+            </h2>
+
+            <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 font-mono">
+              BAR COUNCIL REG NO: BC/SL/71629 · CERTIFIED SPECIALIZATION: CIVIL & LITIGATION
+            </p>
+
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 max-w-3xl leading-relaxed italic">
+              “In the defense of law and human rights, certified legal counsel stands as the guardian of equity and constitutional representation.”
+            </p>
           </div>
 
-          <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
-            Advocate Chamber Workspace • Welcome, {advocateName}
-          </h2>
-
-          <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 font-mono">
-            BAR COUNCIL REG NO: BC/SL/71629 · CERTIFIED SPECIALIZATION: CIVIL & LITIGATION
-          </p>
-
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 max-w-3xl leading-relaxed italic">
-            “In the defense of law and human rights, certified legal counsel stands as the guardian of equity and constitutional representation.”
-          </p>
+          <div className="text-left md:text-right shrink-0 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800">
+            <p className="text-xs font-bold text-slate-800 dark:text-white">📅 {todayDate}</p>
+            <p className="text-xs text-blue-600 dark:text-blue-400 font-mono font-bold mt-0.5">🕒 {currentTime}</p>
+          </div>
         </div>
-
-        <div className="text-left md:text-right shrink-0 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800">
-          <p className="text-xs font-bold text-slate-800 dark:text-white">📅 {todayDate}</p>
-          <p className="text-xs text-blue-600 dark:text-blue-400 font-mono font-bold mt-0.5">🕒 {currentTime}</p>
-        </div>
-      </div>
+      )}
 
       {/* ── 1. DASHBOARD VIEW ── */}
       {activeTab === 'dashboard' && (
@@ -458,32 +677,34 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <button
               onClick={() => navigate('/dashboard/assigned-cases')}
-              className="flex items-center justify-between p-4 rounded-2xl bg-gradient-to-tr from-[#2563eb] to-[#3b82f6] text-white hover:scale-[1.02] transition shadow-md"
+              className="flex items-center justify-between p-4 rounded-2xl bg-[#202A3B] text-white border border-[#B69B72]/20 hover:border-[#B69B72] hover:scale-[1.01] transition shadow-md"
             >
               <div className="text-left">
-                <p className="text-xs font-bold uppercase tracking-wider text-blue-100">Docket Audits</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-[#D9C7A5]">Docket Audits</p>
                 <p className="text-sm font-black mt-1">Review Cases Allocations</p>
               </div>
-              <FolderOpen size={20} className="text-white bg-white/20 p-1 rounded-full shrink-0" />
+              <FolderOpen size={20} className="text-[#B69B72] bg-white/10 p-1 rounded-full shrink-0" />
             </button>
 
             <button
               onClick={() => setShowAiAssistant(true)}
-              className="flex items-center justify-between p-4 rounded-2xl bg-gradient-to-tr from-[#7c3aed] to-[#8b5cf6] text-white hover:scale-[1.02] transition shadow-md"
+              className="flex items-center justify-between p-4 rounded-2xl bg-[#EDE9FE] text-[#5B21B6] border border-[#DDD6FE] hover:scale-[1.01] transition shadow-md"
             >
               <div className="text-left">
-                <p className="text-xs font-bold uppercase tracking-wider text-purple-100">AI Litigator</p>
-                <p className="text-sm font-black mt-1">AI Precedent Suggestion</p>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md bg-white/70 text-[#5B21B6]">
+                  AI Litigator
+                </span>
+                <p className="text-sm font-black mt-1 text-[#5B21B6]">AI Precedent Suggestion</p>
               </div>
-              <Sparkles size={20} className="text-white bg-white/20 p-1 rounded-full shrink-0" />
+              <Sparkles size={20} className="text-[#5B21B6] bg-white/60 p-1 rounded-full shrink-0" />
             </button>
 
             <button
               onClick={() => navigate('/dashboard/schedule')}
-              className="flex items-center justify-between p-4 rounded-2xl bg-gradient-to-tr from-[#059669] to-[#10b981] text-white hover:scale-[1.02] transition shadow-md"
+              className="flex items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-[#B69B72] to-[#9A7E55] text-white hover:scale-[1.01] transition shadow-md"
             >
               <div className="text-left">
-                <p className="text-xs font-bold uppercase tracking-wider text-emerald-100">Court Agenda</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-[#FAF8F3]">Court Agenda</p>
                 <p className="text-sm font-black mt-1">Manage Schedules</p>
               </div>
               <Calendar size={20} className="text-white bg-white/20 p-1 rounded-full shrink-0" />
@@ -549,6 +770,174 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
               <p className="text-[9px] text-slate-400 font-semibold text-left">Based on 140 public aid clients audits</p>
               <div className="absolute bottom-0 left-0 right-0 h-1 w-1/3 bg-amber-500 animate-pulse" />
             </motion.div>
+          </div>
+
+          {/* ── INCOMING CLIENT REPRESENTATION REQUESTS SECTION ── */}
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="relative flex h-3 w-3">
+                  {incomingRequests.some(r => r.representationStatus === 'Requested') ? (
+                    <>
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+                    </>
+                  ) : (
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2" style={{ fontFamily: 'var(--font-display)' }}>
+                    Incoming Client Representation Requests
+                    {incomingRequests.filter(r => r.representationStatus === 'Requested').length > 0 && (
+                      <span className="badge badge-amber text-[10px] font-black uppercase px-2 py-0.5 animate-pulse">
+                        {incomingRequests.filter(r => r.representationStatus === 'Requested').length} Pending Acceptance
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Clients who chose you as their counsel through the AI Legal Aid Recommendation Matcher.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={fetchLawyerRequests}
+                disabled={loadingRequests}
+                className="self-start sm:self-auto text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5"
+              >
+                <Clock size={12} className={loadingRequests ? 'animate-spin' : ''} />
+                {loadingRequests ? 'Refreshing...' : 'Refresh Requests'}
+              </button>
+            </div>
+
+            {incomingRequests.filter(r => r.representationStatus === 'Requested').length === 0 ? (
+              <div className="p-5 rounded-2xl bg-white dark:bg-[#1e293b] border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-4 shadow-sm">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shrink-0 border border-emerald-500/20">
+                    <CheckCircle2 size={20} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-800 dark:text-white">All Representation Requests Up to Date</p>
+                    <p className="text-[11px] text-slate-400">
+                      Your advocate profile is active in the AI Recommendation System. New representation requests from matched applicants will appear here in real time.
+                    </p>
+                  </div>
+                </div>
+                <span className="badge badge-emerald shrink-0 text-[10px]">AI Match Pool Active</span>
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                {incomingRequests.filter(r => r.representationStatus === 'Requested').map((req) => {
+                  const isActing = requestActionInProgress === req._id;
+                  return (
+                    <motion.div
+                      key={req._id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-white dark:bg-[#1e293b] rounded-2xl border-2 border-amber-400/90 dark:border-amber-500/80 ring-4 ring-amber-400/10 p-5 shadow-lg relative overflow-hidden flex flex-col justify-between"
+                    >
+                      <div className="absolute top-0 right-0 px-3 py-1 bg-gradient-to-l from-amber-500 to-amber-600 text-white text-[9.5px] font-black uppercase tracking-wider rounded-bl-xl shadow-sm flex items-center gap-1">
+                        <Sparkles size={11} /> AI Match Selection
+                      </div>
+
+                      <div className="space-y-3.5">
+                        <div className="flex items-start gap-3">
+                          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white flex items-center justify-center font-black text-lg shadow-md shrink-0">
+                            {req.applicant?.name?.charAt(0) || 'C'}
+                          </div>
+                          <div className="pr-20 min-w-0">
+                            <span className="text-[9.5px] font-mono text-slate-400 font-bold block">
+                              {req.applicationNumber || req._id}
+                            </span>
+                            <h4 className="text-sm font-extrabold text-slate-900 dark:text-white truncate">
+                              {req.caseTitle || req.subject || 'Legal Aid Dispute'}
+                            </h4>
+                            <p className="text-xs text-blue-600 dark:text-blue-400 font-bold">
+                              Client: {req.applicant?.name || 'Applicant'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 rounded-xl space-y-1">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
+                            Dispute Overview
+                          </p>
+                          <p className="text-xs text-slate-700 dark:text-slate-300 line-clamp-2 leading-relaxed">
+                            {req.description || 'Representation requested through AI Recommendation System.'}
+                          </p>
+                          {req.requestNote && (
+                            <p className="text-[10.5px] text-amber-700 dark:text-amber-400 italic pt-1 border-t border-amber-200/50 dark:border-amber-900/30">
+                              <strong>Note from Client:</strong> “{req.requestNote}”
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-500 dark:text-slate-400 pt-1">
+                          <div>
+                            <span className="font-semibold text-slate-400 block text-[9.5px]">CATEGORY</span>
+                            <span className="font-bold text-slate-800 dark:text-slate-200">{req.disputeType || 'Civil Law'}</span>
+                          </div>
+                          <div>
+                            <span className="font-semibold text-slate-400 block text-[9.5px]">URGENCY</span>
+                            <span className={`font-bold ${req.urgency === 'High' || req.urgency === 'Immediate' ? 'text-rose-600 dark:text-rose-400' : 'text-slate-800 dark:text-slate-200'}`}>
+                              {req.urgency || 'Normal'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="font-semibold text-slate-400 block text-[9.5px]">LOCATION</span>
+                            <span className="font-bold text-slate-800 dark:text-slate-200">{req.applicant?.location || req.location || 'Colombo'}</span>
+                          </div>
+                          <div>
+                            <span className="font-semibold text-slate-400 block text-[9.5px]">REQUESTED ON</span>
+                            <span className="font-bold text-slate-800 dark:text-slate-200">
+                              {req.requestDate ? new Date(req.requestDate).toLocaleDateString() : 'Today'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
+                        <button
+                          onClick={() => handleAcceptRequest(req._id)}
+                          disabled={isActing}
+                          className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs py-2.5 px-4 rounded-xl shadow-md shadow-emerald-600/20 hover:scale-[1.02] transition flex items-center justify-center gap-1.5"
+                        >
+                          <CheckCircle2 size={14} />
+                          {isActing ? 'Confirming...' : 'Accept Request'}
+                        </button>
+                        <button
+                          onClick={() => handleDeclineRequest(req._id)}
+                          disabled={isActing}
+                          className="text-xs font-bold py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 transition"
+                        >
+                          Decline
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedCase({
+                              id: req.applicationNumber || req._id,
+                              rawId: req._id,
+                              title: req.caseTitle || `${req.disputeType} Petition`,
+                              applicant: req.applicant?.name || 'Applicant',
+                              court: req.courtName || 'District Court Hall 3',
+                              judge: 'Hon. Justice Presiding',
+                              priority: req.urgency || 'High',
+                              status: 'Pending Review',
+                              representationStatus: req.representationStatus,
+                              timeline: req.timeline || [],
+                              notes: []
+                            });
+                          }}
+                          className="text-xs font-bold py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+                        >
+                          Dossier
+                        </button>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Core Dashboard sections grid */}
@@ -711,16 +1100,16 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
                     View Details
                   </button>
                   
-                  {c.status === 'Pending Review' ? (
+                  {c.status === 'Pending Review' || c.representationStatus === 'Requested' ? (
                     <div className="flex gap-2 w-full mt-2">
                       <button
-                        onClick={() => handleAcceptCase(c.id)}
-                        className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs py-2 font-bold transition"
+                        onClick={() => handleAcceptCase(c.id, c.rawId)}
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs py-2 font-bold transition flex items-center justify-center gap-1.5"
                       >
-                        Accept Docket
+                        <CheckCircle2 size={13} /> Accept Docket
                       </button>
                       <button
-                        onClick={() => handleRejectCase(c.id)}
+                        onClick={() => handleRejectCase(c.id, c.rawId)}
                         className="flex-1 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs py-2 font-bold transition"
                       >
                         Reject
@@ -728,12 +1117,7 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
                     </div>
                   ) : (
                     <button
-                      onClick={() => {
-                        const newStatus = prompt('Enter new litigation status: (e.g. Completed, Postponed)');
-                        if (newStatus) {
-                          setCases(cases.map(item => item.id === c.id ? { ...item, status: newStatus } : item));
-                        }
-                      }}
+                      onClick={() => handleUpdateCaseStatus(c)}
                       className="flex-1 btn-primary text-xs py-2 justify-center rounded-xl"
                     >
                       Update Status
@@ -756,67 +1140,123 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
             <p className="text-xs text-slate-400">Access profiles, contact numbers, case histories, and uploaded document vaults.</p>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2">
-            {clients.map((client) => (
-              <div key={client.id} className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center gap-3">
-                    <img src={client.photo} alt={client.name} className="h-14 w-14 rounded-2xl object-cover border" />
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">{client.name}</h4>
-                      <p className="text-[10px] text-slate-400 font-semibold">{client.id} · Assigned: {client.assignedDate}</p>
+          {clients.length === 0 ? (
+            <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-10 text-center space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-[#202A3B] text-[#B69B72] border border-[#B69B72]/30 flex items-center justify-center mx-auto shadow-xs">
+                <Users size={22} />
+              </div>
+              <h4 className="text-sm font-bold text-slate-800 dark:text-white">No Assigned Clients Yet</h4>
+              <p className="text-xs text-slate-400 max-w-md mx-auto">
+                Real-time clients will automatically appear here as soon as legal aid petitions are assigned to you by the court registry or accepted from citizen representation requests.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-6 md:grid-cols-2">
+              {clients.map((client) => (
+                <div key={client.id} className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-11 h-11 rounded-xl bg-[#202A3B] text-[#B69B72] border border-[#B69B72]/30 flex items-center justify-center font-extrabold text-sm shadow-xs shrink-0">
+                          {client.name ? client.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() : 'CL'}
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-slate-900 dark:text-white">{client.name}</h4>
+                          <p className="text-[10px] text-slate-400 font-semibold">{client.id} · Assigned: {client.assignedDate}</p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        {client.status || 'Active'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 text-xs text-slate-500 mt-4 border-t border-slate-100 dark:border-slate-850 pt-4">
+                      <p><strong>Phone:</strong> {client.phone}</p>
+                      <p><strong>Email:</strong> {client.email}</p>
+                      <p className="col-span-2"><strong>Case Category:</strong> {client.caseType}</p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 text-xs text-slate-500 mt-4 border-t border-slate-100 dark:border-slate-850 pt-4">
-                    <p><strong>Phone:</strong> {client.phone}</p>
-                    <p><strong>Email:</strong> {client.email}</p>
-                    <p className="col-span-2"><strong>Case Category:</strong> {client.caseType}</p>
+                  <div className="flex gap-2 border-t border-slate-100 dark:border-slate-850 pt-4 mt-6">
+                    <button
+                      onClick={() => setSelectedClient(client)}
+                      className="flex-1 btn-secondary text-xs py-2 justify-center rounded-xl"
+                    >
+                      View Client
+                    </button>
+                    <button
+                      onClick={() => {
+                        setActiveChatRecipient(client.id);
+                        navigate('/dashboard/messages');
+                      }}
+                      className="flex-1 btn-primary text-xs py-2 justify-center rounded-xl"
+                    >
+                      Send Message
+                    </button>
                   </div>
                 </div>
-
-                <div className="flex gap-2 border-t border-slate-100 dark:border-slate-850 pt-4 mt-6">
-                  <button
-                    onClick={() => setSelectedClient(client)}
-                    className="flex-1 btn-secondary text-xs py-2 justify-center rounded-xl"
-                  >
-                    View Client
-                  </button>
-                  <button
-                    onClick={() => {
-                      setActiveChatRecipient(client.id);
-                      navigate('/dashboard/messages');
-                    }}
-                    className="flex-1 btn-primary text-xs py-2 justify-center rounded-xl"
-                  >
-                    Send Message
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {/* ── 4. SCHEDULE TAB ── */}
+      {/* ── 4. SCHEDULE TAB (ADVOCATE COURT CALENDAR) ── */}
       {activeTab === 'schedule' && (
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 dark:border-slate-850 pb-4">
-              <div>
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'var(--font-display)' }}>
-                  Advocate Court Calendar Schedules
-                </h3>
-                <p className="text-xs text-slate-400 font-medium">Verify execution of each stage in your legal aid pipeline.</p>
+        <div className="space-y-4">
+          {/* Top Compact Hero Banner */}
+          <div className="bg-[#202A3B] text-white rounded-xl border border-[#B69B72]/30 px-3.5 sm:px-4 py-2.5 sm:py-3 shadow-md relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-radial from-[#B69B72]/15 to-transparent pointer-events-none" />
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-[#B69B72]/20 text-[#D9C7A5] flex items-center justify-center shrink-0">
+                  <Calendar size={13} />
+                </div>
+                <h2 className="text-sm sm:text-base font-extrabold text-white tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
+                  Advocate Court Hearing Schedules & Docket Trials
+                </h2>
+                <span className="text-[9px] font-bold text-[#D9C7A5] bg-white/10 px-2 py-0.5 rounded-full border border-[#B69B72]/30">
+                  Bar Certified Docket
+                </span>
               </div>
 
-              <div className="flex rounded-xl border border-slate-200 dark:border-slate-850 p-1 bg-slate-50 dark:bg-slate-900 max-w-xs shrink-0 self-start">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <div className="flex items-center gap-1 text-[11px] bg-white/5 border border-white/10 rounded-lg px-2 py-1">
+                  <span className="text-white/60">Sessions:</span>
+                  <span className="font-bold text-white font-mono">3 Active</span>
+                </div>
+                <div className="flex items-center gap-1 text-[11px] bg-white/5 border border-white/10 rounded-lg px-2 py-1">
+                  <span className="text-white/60">Next:</span>
+                  <span className="font-bold text-[#D9C7A5] font-mono">Tomorrow 10:30 AM</span>
+                </div>
+                <div className="flex items-center gap-1.5 ml-auto sm:ml-1">
+                  <button
+                    onClick={() => alert('Advocate master calendar synced with judiciary listing.')}
+                    className="btn-gold px-3 py-1 rounded-lg text-xs font-bold text-white flex items-center gap-1 shadow-sm hover:scale-[1.02] transition"
+                  >
+                    <Download size={12} /> Sync .ICS
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-[#1B2332] rounded-xl border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div>
+                <h3 className="text-sm font-extrabold text-[#202A3B] dark:text-white" style={{ fontFamily: 'var(--font-display)' }}>
+                  Court Hearing Calendar & Daily Cause List
+                </h3>
+                <p className="text-xs text-slate-400 font-medium">Verify trial dates, judge benches, and client briefing milestones.</p>
+              </div>
+
+              <div className="flex rounded-lg border border-slate-200/80 dark:border-slate-700 p-0.5 bg-[#FAF9F5] dark:bg-[#202A3B]/60 max-w-xs shrink-0 self-start">
                 {['month', 'week', 'agenda'].map((view) => (
                   <button
                     key={view}
                     onClick={() => setCalendarView(view)}
-                    className={`text-[10px] font-bold px-3 py-1.5 rounded-lg capitalize ${
-                      calendarView === view ? 'bg-white dark:bg-slate-950 text-blue-600 shadow' : 'text-slate-500'
+                    className={`text-xs font-bold px-3 py-1 rounded-md capitalize transition ${
+                      calendarView === view ? 'bg-[#202A3B] text-white shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
                     {view}
@@ -827,36 +1267,44 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
 
             {/* Calendar render */}
             {calendarView === 'month' && (
-              <div className="grid gap-6 md:grid-cols-3">
-                <div className="md:col-span-2 p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-150 dark:border-slate-850">
-                  <p className="text-xs font-bold text-slate-550 dark:text-slate-350 uppercase mb-3">July 2026</p>
-                  <div className="grid grid-cols-7 gap-2 text-center text-xs font-semibold text-slate-400">
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="md:col-span-2 p-4 bg-[#FAF9F5] dark:bg-[#202A3B]/40 rounded-xl border border-slate-200/60 dark:border-slate-800">
+                  <p className="text-xs font-bold text-[#202A3B] dark:text-white uppercase mb-3" style={{ fontFamily: 'var(--font-display)' }}>
+                    October 2026
+                  </p>
+                  <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-extrabold text-slate-400 uppercase">
                     <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
                   </div>
-                  <div className="grid grid-cols-7 gap-2 mt-2 text-center text-xs text-slate-700 dark:text-slate-300">
+                  <div className="grid grid-cols-7 gap-1 mt-2 text-center text-xs text-slate-700 dark:text-slate-300">
                     <span className="text-slate-300 dark:text-slate-700">29</span>
                     <span className="text-slate-300 dark:text-slate-700">30</span>
                     <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
                     <span>6</span><span>7</span><span>8</span><span>9</span><span>10</span><span>11</span><span>12</span>
                     <span>13</span><span>14</span>
-                    <span className="h-7 w-7 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center mx-auto shadow-md cursor-pointer animate-pulse">
+                    <span className="h-7 w-7 rounded-full bg-[#202A3B] border-2 border-[#B69B72] text-[#D9C7A5] font-black flex items-center justify-center mx-auto shadow-md cursor-pointer animate-pulse">
                       15
                     </span>
                     <span>16</span><span>17</span><span>18</span><span>19</span><span>20</span><span>21</span>
-                    <span>22</span><span>23</span><span>24</span><span>25</span><span>26</span><span>27</span><span>28</span>
+                    <span>22</span><span>23</span><span>24</span><span>25</span><span>26</span><span>27</span>
+                    <span className="h-7 w-7 rounded-full bg-[#B69B72] text-white font-black flex items-center justify-center mx-auto shadow-xs cursor-pointer">
+                      28
+                    </span>
+                    <span>29</span><span>30</span><span>31</span>
                   </div>
                 </div>
 
-                <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-150 dark:border-slate-850 flex flex-col justify-between">
+                <div className="p-4 bg-[#FAF9F5] dark:bg-[#202A3B]/40 rounded-xl border border-slate-200/60 dark:border-slate-800 flex flex-col justify-between space-y-3">
                   <div>
-                    <span className="text-[8px] font-bold bg-amber-50 text-amber-700 px-2 py-0.5 rounded uppercase">Court Hearing</span>
-                    <h4 className="text-xs font-bold text-slate-800 dark:text-white mt-2">Nair Boundary Dispute Trial</h4>
-                    <p className="text-[10px] text-slate-450 mt-1">Courtroom Hall 3 · District Court</p>
-                    <p className="text-[10px] text-slate-450 mt-0.5">Judge Shanmugam · Priya Nair</p>
+                    <span className="text-[9.5px] font-bold bg-[#B69B72]/15 text-[#B69B72] px-2 py-0.5 rounded uppercase border border-[#B69B72]/20">
+                      Court Hearing
+                    </span>
+                    <h4 className="text-xs font-extrabold text-[#202A3B] dark:text-white mt-2">Nair Boundary Dispute Trial</h4>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Courtroom Hall 3 · District Court</p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Judge Shanmugam · Client: Priya Nair</p>
                   </div>
-                  <div className="pt-3 border-t border-slate-200 dark:border-slate-800 mt-4 text-[10px] text-slate-400">
-                    <p><strong>Time:</strong> 10:30 AM</p>
-                    <p><strong>Reminder Status:</strong> Tomorrow alerts check complete</p>
+                  <div className="pt-3 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 space-y-1">
+                    <p><strong>Hearing Time:</strong> 10:30 AM</p>
+                    <p><strong>Status:</strong> Case Brief Prepared & Certified</p>
                   </div>
                 </div>
               </div>
@@ -868,12 +1316,13 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
                   { title: 'Custody mediation meeting', time: '11:00 AM', client: 'Arjun Das', place: 'Family Court Hall 1' },
                   { title: 'Boundary trial preliminary submissions', time: '10:30 AM', client: 'Priya Nair', place: 'Court Hall 3' }
                 ].map((item, i) => (
-                  <div key={i} className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border flex items-center justify-between text-xs">
+                  <div key={i} className="p-3.5 bg-[#FAF9F5] dark:bg-[#202A3B]/40 rounded-xl border border-slate-200/60 dark:border-slate-800 flex items-center justify-between text-xs">
                     <div>
-                      <p className="font-bold text-slate-850 dark:text-white">{item.title}</p>
-                      <p className="text-slate-400 mt-0.5">Client: {item.client} · Location: {item.place}</p>
+                      <span className="text-[9px] font-bold bg-[#B69B72]/15 text-[#B69B72] px-2 py-0.5 rounded uppercase border border-[#B69B72]/20">Scheduled</span>
+                      <h4 className="font-bold text-[#202A3B] dark:text-white mt-1">{item.title}</h4>
+                      <p className="text-slate-400 mt-0.5">{item.place} · Client: {item.client}</p>
                     </div>
-                    <span className="font-bold text-blue-600 dark:text-blue-400">{item.time}</span>
+                    <span className="font-bold text-[#B69B72] font-mono text-xs">{item.time}</span>
                   </div>
                 ))}
               </div>
@@ -945,88 +1394,8 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
 
       {/* ── 6. MESSAGES TAB ── */}
       {activeTab === 'messages' && (
-        <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden h-[540px] flex">
-          
-          <div className="w-72 shrink-0 border-r border-slate-100 dark:border-slate-800 flex flex-col justify-between bg-slate-50/50 dark:bg-slate-900/30">
-            <div className="p-4 border-b border-slate-100 dark:border-slate-850">
-              <p className="text-xs font-bold text-slate-400 uppercase mb-2.5">Clients Inbox</p>
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search chats..."
-                  value={chatSearchQuery}
-                  onChange={e => setChatSearchQuery(e.target.value)}
-                  className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs outline-none text-slate-800 dark:text-white"
-                />
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-2 space-y-1">
-              <button
-                onClick={() => setActiveChatRecipient('client-1')}
-                className={`w-full text-left p-3 rounded-xl flex items-center gap-3 transition ${
-                  activeChatRecipient === 'client-1' ? 'bg-blue-50/80 dark:bg-blue-950/30 border border-blue-100/50 dark:border-blue-900/50' : 'hover:bg-slate-50 dark:hover:bg-slate-900'
-                }`}
-              >
-                <div className="h-9 w-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-extrabold text-sm shrink-0">
-                  PN
-                </div>
-                <div className="truncate flex-1">
-                  <p className="text-xs font-bold text-slate-900 dark:text-white">Priya Nair</p>
-                  <p className="text-[10px] text-slate-450 truncate">Yes Priya, the PDF upload looks...</p>
-                </div>
-              </button>
-            </div>
-          </div>
-
-          <div className="flex-1 flex flex-col justify-between">
-            <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/20 flex items-center justify-between">
-              <div>
-                <h4 className="text-xs font-bold text-slate-900 dark:text-white">Priya Nair</h4>
-                <p className="text-[9px] text-[#059669] font-bold flex items-center gap-1 mt-0.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#059669] animate-pulse" /> Active client chat
-                </p>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {chatMessages
-                .filter(m => 
-                  m.recipient === activeChatRecipient || 
-                  m.recipient === 'client-1' || 
-                  m.sender === 'user' || 
-                  m.sender === 'User' ||
-                  m.sender === 'applicant'
-                )
-                .map((msg) => (
-                  <div key={msg.id} className={`flex flex-col ${msg.sender === 'lawyer' ? 'items-end' : 'items-start'}`}>
-                    <div className={`max-w-[70%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed ${
-                      msg.sender === 'lawyer'
-                        ? 'bg-blue-600 text-white rounded-br-none'
-                        : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-150 rounded-bl-none'
-                    }`}>
-                      {msg.text}
-                    </div>
-                    <span className="text-[9px] text-slate-400 mt-1 px-1">{msg.time}</span>
-                  </div>
-                ))}
-            </div>
-
-            <div className="p-3 border-t border-slate-100 dark:border-slate-850 flex gap-2 items-center">
-              <input
-                type="text"
-                placeholder="Type your message..."
-                value={typedMessage}
-                onChange={e => setTypedMessage(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
-                className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs outline-none text-slate-800 dark:text-white"
-              />
-              <button onClick={handleSendMessage} className="btn-primary p-2.5 rounded-xl shrink-0 shadow-sm">
-                <Send size={14} />
-              </button>
-            </div>
-          </div>
+        <div className="space-y-4">
+          <ChatCenter />
         </div>
       )}
 
@@ -1054,7 +1423,6 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
                 <Download size={14} /> Export Statement
               </button>
             </div>
-            <div className="absolute right-[-20px] bottom-[-30px] w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
           </div>
 
           {/* Metrics Row */}
@@ -1226,6 +1594,9 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
 
       {/* ── 7. PROFILE & PERFORMANCE TAB ── */}
       {activeTab === 'profile' && (
+        <ProfilePage />
+      )}
+      {false && (
         <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col md:flex-row h-auto min-h-[500px]">
           
           <div className="w-full md:w-56 shrink-0 border-r border-slate-150 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-900/30 p-4 space-y-1">
@@ -1276,8 +1647,12 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
                     <input type="text" defaultValue="12 Years" disabled className="form-input bg-slate-50 dark:bg-slate-900" />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-455 uppercase mb-1.5">Primary Specialization</label>
-                    <input type="text" defaultValue="Civil disputes & boundary partition suits" className="form-input" />
+                    <label className="block text-xs font-bold text-slate-455 uppercase mb-1.5">Registered District</label>
+                    <input type="text" defaultValue={user?.district || 'Coimbatore'} disabled className="form-input bg-slate-50 dark:bg-slate-900 font-semibold text-sky-600 dark:text-sky-400" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-455 uppercase mb-1.5">Registered State</label>
+                    <input type="text" defaultValue={user?.state || 'Tamil Nadu'} disabled className="form-input bg-slate-50 dark:bg-slate-900 font-semibold" />
                   </div>
                   <div className="sm:col-span-2">
                     <label className="block text-xs font-bold text-[#60a5fa] uppercase mb-1.5">Languages spoken</label>
@@ -1415,11 +1790,32 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
 
               {activeCaseDetailTab === 'overview' && (
                 <div className="space-y-3 text-xs">
-                  <p><strong>Applicant Name:</strong> {selectedCase.applicant}</p>
-                  <p><strong>Presiding Judge:</strong> {selectedCase.judge}</p>
-                  <p><strong>Courtroom Hall:</strong> {selectedCase.court}</p>
-                  <p><strong>Litigation priority:</strong> {selectedCase.priority}</p>
-                  <p><strong>Current Status:</strong> {selectedCase.status}</p>
+                  <div className="grid grid-cols-2 gap-2 p-3 bg-slate-50 dark:bg-slate-900 rounded-xl">
+                    <p><strong>Applicant Name:</strong> {selectedCase.applicant}</p>
+                    <p><strong>Presiding Judge:</strong> <span className="text-purple-600 dark:text-purple-400 font-bold">{selectedCase.judge}</span></p>
+                    <p><strong>Court Tier:</strong> {selectedCase.courtTier || 'District Court'}</p>
+                    <p><strong>Court / Hall:</strong> {selectedCase.court}</p>
+                    <p><strong>District:</strong> {selectedCase.district || 'Coimbatore'}</p>
+                    <p><strong>Litigation priority:</strong> {selectedCase.priority}</p>
+                    <p><strong>Current Status:</strong> {selectedCase.status}</p>
+                    <p><strong>Next Hearing:</strong> {selectedCase.nextHearing}</p>
+                  </div>
+
+                  {selectedCase.courtChangeRequest && selectedCase.courtChangeRequest.status === 'Pending' && (
+                    <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-xl text-xs space-y-1 text-amber-800 dark:text-amber-300">
+                      <p className="font-bold">Court Elevation Request Pending Administrative Review</p>
+                      <p className="text-[11px]">Requested Forum: <strong>{selectedCase.courtChangeRequest.requestedTier}</strong> ({selectedCase.courtChangeRequest.requestedCourt})</p>
+                      <p className="text-[10px] italic">Grounds: {selectedCase.courtChangeRequest.reason}</p>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => navigate('/dashboard/cases/' + (selectedCase.rawId || selectedCase.id))}
+                    className="w-full btn-primary text-xs py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5"
+                  >
+                    Open Full Case Dossier, History & Documents
+                  </button>
                 </div>
               )}
 
@@ -1460,6 +1856,36 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
                 </div>
               )}
             </div>
+
+            {/* Modal Action Footer for Representation Requests */}
+            {selectedCase.representationStatus === 'Requested' && (
+              <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 mt-4">
+                <div className="flex items-center gap-2">
+                  <Clock size={16} className="text-amber-500 animate-pulse" />
+                  <span className="text-xs font-bold text-amber-800 dark:text-amber-300">Representation Request Pending</span>
+                </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <button
+                    onClick={async () => {
+                      await handleAcceptRequest(selectedCase.rawId || selectedCase.id);
+                      setSelectedCase(null);
+                    }}
+                    className="flex-1 sm:flex-initial bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 text-white rounded-xl text-xs py-2 px-4 font-bold flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20 transition"
+                  >
+                    <CheckCircle2 size={13} /> Accept Representation
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await handleDeclineRequest(selectedCase.rawId || selectedCase.id);
+                      setSelectedCase(null);
+                    }}
+                    className="flex-1 sm:flex-initial bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs py-2 px-3 font-bold hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 transition"
+                  >
+                    Decline
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1471,7 +1897,9 @@ const LawyerDashboard = ({ activeTab = 'dashboard' }) => {
             <button onClick={() => setSelectedClient(null)} className="absolute right-5 top-5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xl font-bold">×</button>
             
             <div className="flex items-center gap-3">
-              <img src={selectedClient.photo} alt={selectedClient.name} className="h-16 w-16 rounded-2xl object-cover" />
+              <div className="w-14 h-14 rounded-2xl bg-[#202A3B] text-[#B69B72] border border-[#B69B72]/30 flex items-center justify-center font-extrabold text-base shadow-xs shrink-0">
+                {selectedClient.name ? selectedClient.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() : 'CL'}
+              </div>
               <div>
                 <h4 className="text-base font-bold text-slate-900 dark:text-white">{selectedClient.name}</h4>
                 <p className="text-xs text-slate-400">{selectedClient.email} · {selectedClient.phone}</p>

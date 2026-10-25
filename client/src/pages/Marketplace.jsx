@@ -211,11 +211,20 @@ const Marketplace = () => {
                     <div className="flex gap-3 items-start">
                       {/* Avatar */}
                       <div className="lawyer-avatar-wrap relative shrink-0">
-                        <img
-                          src={lawyer.image}
-                          alt={lawyer.name}
-                          className="lawyer-avatar"
-                        />
+                        {lawyer.image ? (
+                          <img
+                            src={lawyer.image}
+                            alt={lawyer.name}
+                            className="lawyer-avatar"
+                          />
+                        ) : (
+                          <div
+                            className="lawyer-avatar flex items-center justify-center font-bold text-base text-white select-none shadow-sm"
+                            style={{ background: `linear-gradient(135deg, ${accent}, ${accent}99)` }}
+                          >
+                            {lawyer.name.split(' ').map(n => n[0]).join('')}
+                          </div>
+                        )}
                         <div className="lawyer-avatar-ring" style={{ borderColor: `${accent}40` }} />
                         <span
                           className="lawyer-verified-badge"

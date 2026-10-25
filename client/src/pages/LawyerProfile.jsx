@@ -79,7 +79,7 @@ const LawyerProfile = () => {
     setBooked(true);
   };
 
-  const ACCENT = '#3B82F6';
+  const ACCENT = '#B69B72';
 
   return (
     <div className="lp-page space-y-6">
@@ -98,7 +98,7 @@ const LawyerProfile = () => {
         <div className="lp-hero-blob" style={{ background: `radial-gradient(circle, ${ACCENT}15, transparent 70%)` }} />
 
         {/* Top gradient bar */}
-        <div className="lp-hero-topbar" style={{ background: `linear-gradient(90deg, ${ACCENT}, #8B5CF6, #B69D74)` }} />
+        <div className="lp-hero-topbar" style={{ background: `linear-gradient(90deg, #202A3B, #B69B72, #D9C7A5)` }} />
 
         <div className="relative z-10 p-8">
           <div className="flex flex-col md:flex-row gap-8 items-start">
@@ -107,7 +107,13 @@ const LawyerProfile = () => {
               <div className="lp-avatar-ring-outer" style={{ borderColor: `${ACCENT}20` }} />
               <div className="lp-avatar-ring-inner" style={{ borderColor: `${ACCENT}35` }} />
               <div className="lp-avatar-wrap">
-                <img src={lawyer.image} alt={lawyer.name} className="lp-avatar-img" />
+                {lawyer.image ? (
+                  <img src={lawyer.image} alt={lawyer.name} className="lp-avatar-img" />
+                ) : (
+                  <div className="lp-avatar-img flex items-center justify-center font-black text-3xl text-white select-none bg-gradient-to-br from-blue-600 to-indigo-700">
+                    {lawyer.name.split(' ').map(n => n[0]).join('')}
+                  </div>
+                )}
               </div>
               {/* Verified badge */}
               <div className="lp-verified-badge" style={{ background: ACCENT }}>
@@ -124,6 +130,16 @@ const LawyerProfile = () => {
                 {lawyer.location && (
                   <span className="flex items-center gap-1.5 text-[12px] text-[var(--text-muted)]">
                     <MapPin size={12} /> {lawyer.location}
+                  </span>
+                )}
+                {(lawyer.courtPractice || lawyer.court) && (
+                  <span className="flex items-center gap-1.5 text-[12px] text-amber-700 dark:text-amber-400 font-medium bg-amber-50 dark:bg-amber-950/40 px-2.5 py-0.5 rounded-full border border-amber-200/60 dark:border-amber-900/40">
+                    <Briefcase size={12} /> {lawyer.courtPractice || lawyer.court}
+                  </span>
+                )}
+                {lawyer.barNumber && (
+                  <span className="flex items-center gap-1.5 text-[12px] text-blue-700 dark:text-blue-400 font-mono bg-blue-50 dark:bg-blue-950/40 px-2.5 py-0.5 rounded-full border border-blue-200/60 dark:border-blue-900/40">
+                    Bar Reg: {lawyer.barNumber}
                   </span>
                 )}
               </div>

@@ -1,16 +1,20 @@
 import { useContext, useState, useRef, useEffect } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import axios from '../api/axios';
+import { subscribeToNotifications } from '../services/socket';
 import { AuthContext } from '../contexts/AuthContext';
 import { ThemeContext } from '../contexts/ThemeContext';
-import { Bell, Sun, Moon, Sparkles, ChevronDown, Menu, Clock, Layers, Calendar, FileText, ShieldCheck, HelpCircle, Search } from 'lucide-react';
+import { Bell, Sun, Moon, Sparkles, ChevronDown, Menu, Clock, Layers, Calendar, FileText, ShieldCheck, HelpCircle, Search, CheckCheck, User } from 'lucide-react';
 import Logo from './Logo';
 
 const TopBar = ({ sidebarCollapsed, onToggleSidebar }) => {
   const { user, logout } = useContext(AuthContext);
   const { theme, toggleTheme } = useContext(ThemeContext);
+  const navigate = useNavigate();
   const [showNotifs, setShowNotifs] = useState(false);
   const [currentTime, setCurrentTime] = useState('');
   const [currentDate, setCurrentDate] = useState('');
+  const [liveNotifs, setLiveNotifs] = useState([]);
   const notifRef = useRef(null);
   const megaMenuRef = useRef(null);
   const profileRef = useRef(null);
@@ -20,9 +24,74 @@ const TopBar = ({ sidebarCollapsed, onToggleSidebar }) => {
 
   const isPortalServicesActive = location.pathname === '/find-lawyers' || location.pathname.startsWith('/dashboard/find-lawyers');
 
-  const userName = user?.name ? user.name.split(' ')[0] : 'User';
+  const getFormattedName = () => {
+    if (!user?.name) return 'User';
+    if (user?.role === 'Judge') {
+      return user.name.replace(/^Hon\.\s*/i, '');
+    }
+    if (user?.role === 'Lawyer' && user.name.startsWith('Advocate ')) {
+      return user.name.replace('Advocate ', 'Adv. ');
+    }
+    return user.name;
+  };
+
+  const userName = getFormattedName();
   const userRole  = user?.role  || 'Guest';
-  const userInitial = userName.charAt(0).toUpperCase();
+  const userInitial = user?.role === 'Judge'
+    ? (userName.replace(/^Justice\s*/i, '').charAt(0) || 'J').toUpperCase()
+    : (userName.charAt(0) || 'U').toUpperCase();
+
+  // Fetch real notifications
+  const fetchLiveNotifications = async () => {
+    try {
+      const res = await axios.get('/notifications');
+      if (Array.isArray(res.data)) {
+        setLiveNotifs(res.data);
+      }
+    } catch (err) {
+      console.warn('Could not fetch notifications:', err.message);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchLiveNotifications();
+      subscribeToNotifications((newNotif) => {
+        setLiveNotifs(prev => [newNotif, ...prev]);
+      });
+    }
+  }, [user]);
+
+  const handleMarkAllRead = async () => {
+    try {
+      await axios.patch('/notifications/mark-all-read');
+      setLiveNotifs(prev => prev.map(n => ({ ...n, read: true })));
+    } catch (err) {
+      console.warn('Failed to mark all as read:', err.message);
+    }
+  };
+
+  const handleNotificationClick = async (notif) => {
+    try {
+      if (!notif.read && notif._id) {
+        await axios.patch(`/notifications/${notif._id}/read`);
+        setLiveNotifs(prev => prev.map(n => n._id === notif._id ? { ...n, read: true } : n));
+      }
+      const caseTargetId = notif.application?._id || notif.application || notif.metadata?.applicationId;
+      if (caseTargetId) {
+        navigate(`/dashboard/cases/${caseTargetId}`);
+      } else if (user?.role === 'Lawyer') {
+        navigate('/dashboard/assigned-cases');
+      } else if (user?.role === 'Judge') {
+        navigate('/dashboard/assigned-cases');
+      } else {
+        navigate('/dashboard/applications');
+      }
+      setShowNotifs(false);
+    } catch (err) {
+      console.warn(err);
+    }
+  };
 
   // Live clock
   useEffect(() => {
@@ -37,19 +106,27 @@ const TopBar = ({ sidebarCollapsed, onToggleSidebar }) => {
   }, []);
 
   const roleMeta = {
-    Admin:     { label: 'Super Admin',   color: '#8B5CF6', bg: 'rgba(139,92,246,0.12)', border: 'rgba(139,92,246,0.25)', grad: 'linear-gradient(135deg,#6D28D9,#8B5CF6)' },
-    Lawyer:    { label: 'Legal Counsel', color: '#3B82F6', bg: 'rgba(59,130,246,0.12)',  border: 'rgba(59,130,246,0.25)',  grad: 'linear-gradient(135deg,#1D4ED8,#3B82F6)' },
-    User:      { label: 'Applicant',     color: '#B69D74', bg: 'rgba(182,157,116,0.12)', border: 'rgba(182,157,116,0.25)', grad: 'linear-gradient(135deg,#9A7E55,#B69D74)' },
-    Applicant: { label: 'Applicant',     color: '#B69D74', bg: 'rgba(182,157,116,0.12)', border: 'rgba(182,157,116,0.25)', grad: 'linear-gradient(135deg,#9A7E55,#B69D74)' },
+    Admin:     { label: 'Court Administration', color: '#B69B72', bg: 'rgba(182,155,114,0.15)', border: 'rgba(182,155,114,0.3)', grad: 'linear-gradient(135deg,#202A3B,#B69B72)' },
+    Judge:     { label: 'Judicial Bench',       color: '#B69B72', bg: 'rgba(182,155,114,0.15)', border: 'rgba(182,155,114,0.3)', grad: 'linear-gradient(135deg,#202A3B,#B69B72)' },
+    Lawyer:    { label: 'Advocate Chambers',    color: '#D9C7A5', bg: 'rgba(217,199,165,0.15)', border: 'rgba(217,199,165,0.3)', grad: 'linear-gradient(135deg,#202A3B,#D9C7A5)' },
+    User:      { label: 'Citizen Portal',       color: '#D9C7A5', bg: 'rgba(217,199,165,0.15)', border: 'rgba(217,199,165,0.3)', grad: 'linear-gradient(135deg,#202A3B,#B69B72)' },
+    Applicant: { label: 'Citizen Portal',       color: '#D9C7A5', bg: 'rgba(217,199,165,0.15)', border: 'rgba(217,199,165,0.3)', grad: 'linear-gradient(135deg,#202A3B,#B69B72)' },
   };
   const meta = roleMeta[userRole] || roleMeta['User'];
 
-  const notifications = [
-    { id: 1, title: 'New Aid Application', body: 'Meera Singh submitted AID503.', time: '10m', unread: true, color: '#3B82F6' },
-    { id: 2, title: 'Lawyer Pending Audit', body: 'Nidhi Sharma requires verification.', time: '2h', unread: true, color: '#F59E0B' },
-    { id: 3, title: 'Hearing Scheduled', body: 'CASE801 set for July 15, 10:30 AM.', time: '1d', unread: false, color: '#10B981' },
+  const notificationsList = liveNotifs.length > 0 ? liveNotifs.map(n => ({
+    id: n._id || n.id,
+    _id: n._id,
+    title: n.title || (n.category === 'RepresentationRequest' ? 'New Representation Request' : (n.category === 'RequestAccepted' ? 'Representation Accepted! 🎉' : (n.category === 'JudgeAssigned' ? '⚖️ Presiding Judge Assigned' : 'Case Notification'))),
+    body: n.message || n.body,
+    time: n.createdAt ? new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now',
+    unread: !n.read,
+    color: n.category === 'RepresentationRequest' ? '#F59E0B' : (n.category === 'RequestAccepted' ? '#10B981' : (n.category === 'JudgeAssigned' ? '#8B5CF6' : '#3B82F6')),
+    category: n.category
+  })) : [
+    { id: 1, title: 'Portal Connected', body: 'Judicial docket synchronized with active registry.', time: 'Now', unread: false, color: '#3B82F6' },
   ];
-  const unreadCount = notifications.filter(n => n.unread).length;
+  const unreadCount = notificationsList.filter(n => n.unread).length;
 
   useEffect(() => {
     const handler = (e) => {
@@ -63,26 +140,6 @@ const TopBar = ({ sidebarCollapsed, onToggleSidebar }) => {
 
   return (
     <header className="topbar-premium sticky top-0 z-30 select-none">
-      {/* 🏛️ OFFICIAL NATIONAL GOVERNMENT EMBLEM HEADER BAR */}
-      <div className="bg-[#0b1329] text-white px-5 py-1 text-[10px] font-semibold flex items-center justify-between border-b border-slate-800 tracking-wider uppercase select-none">
-        <div className="flex items-center gap-2">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-slate-300 font-bold">National Legal Aid & Judicial Services Portal</span>
-          <span className="text-slate-500">•</span>
-          <span className="text-amber-400 font-bold">Ministry of Law & Justice</span>
-        </div>
-        <div className="hidden sm:flex items-center gap-3 text-slate-400 font-mono text-[9.5px]">
-          <span>Official Government Portal</span>
-          <span>•</span>
-          <span className="text-emerald-400 flex items-center gap-1 font-bold">
-            <ShieldCheck size={11} /> 256-Bit SSL Certified
-          </span>
-        </div>
-      </div>
-
-      {/* Animated gradient top bar */}
-      <div className="topbar-gradient-line" />
-
       <div className="flex items-center justify-between gap-4 px-5 py-3">
 
         {/* ── LEFT: Brand + Toggle ── */}
@@ -99,14 +156,14 @@ const TopBar = ({ sidebarCollapsed, onToggleSidebar }) => {
           {/* Dynamic Breadcrumbs */}
           <div className="flex items-center gap-2">
             <div className="topbar-brand-icon shrink-0">
-              <Logo className="h-[15px] w-[15px] text-[#B69D74]" strokeWidth={2} />
+              <Logo className="h-[15px] w-[15px] text-[#B69B72]" strokeWidth={2} />
             </div>
             <div className="hidden md:flex items-center gap-1.5 text-xs text-slate-455 dark:text-slate-400 font-semibold font-mono">
               <span className="text-[var(--text-muted)] font-bold">portal</span>
               {location.pathname.split('/').filter(x => x && x !== 'dashboard' && x !== 'portal').map((p, idx, arr) => (
                 <span key={idx} className="flex items-center gap-1.5">
                   <span className="text-slate-400/30">/</span>
-                  <span className={idx === arr.length - 1 ? 'text-[#B69D74] font-bold' : 'text-[var(--text-secondary)] font-medium hover:text-[var(--text-primary)] transition'}>
+                  <span className={idx === arr.length - 1 ? 'text-[#B69B72] font-bold' : 'text-[var(--text-secondary)] font-medium hover:text-[var(--text-primary)] transition'}>
                     {p}
                   </span>
                 </span>
@@ -117,7 +174,7 @@ const TopBar = ({ sidebarCollapsed, onToggleSidebar }) => {
                 className="text-[14px] font-bold leading-none tracking-[0.1em] uppercase"
                 style={{
                   fontFamily: 'var(--font-display)',
-                  background: 'linear-gradient(90deg, #B69D74 0%, #E6D5B8 50%, #9A7E55 100%)',
+                  background: 'linear-gradient(90deg, #B69B72 0%, #D9C7A5 50%, #9A7E55 100%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                   backgroundClip: 'text',
@@ -130,13 +187,13 @@ const TopBar = ({ sidebarCollapsed, onToggleSidebar }) => {
         </div>
 
         {/* ── CENTER: Navigation Links ── */}
-        <nav className="hidden items-center gap-1 text-[13px] font-semibold text-[#1F2839] dark:text-slate-300 lg:flex mx-auto">
+        <nav className="hidden items-center gap-1 text-[13px] font-semibold text-[#202A3B] dark:text-slate-300 lg:flex mx-auto">
           <NavLink
             to="/"
             end
             className={({ isActive }) =>
-              `rounded-full px-4 py-2 transition hover:text-[#B69D74] dark:hover:text-[#B69D74] hover:bg-[#B69D74]/8 ${
-                isActive ? 'text-[#B69D74] dark:text-[#B69D74] bg-[#B69D74]/8 font-bold' : ''
+              `rounded-full px-4 py-2 transition hover:text-[#B69B72] dark:hover:text-[#B69B72] hover:bg-[#B69B72]/8 ${
+                isActive ? 'text-[#B69B72] dark:text-[#B69B72] bg-[#B69B72]/8 font-bold' : ''
               }`
             }
           >
@@ -160,53 +217,53 @@ const TopBar = ({ sidebarCollapsed, onToggleSidebar }) => {
             {/* MEGA MENU BODY */}
             {megaMenuOpen && (
               <div className="absolute left-1/2 top-full mt-3 w-[520px] -translate-x-1/2 rounded-3xl border border-slate-200 bg-white/95 p-6 shadow-2xl backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/95">
-                <p className="font-space text-xs font-semibold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">Seven Seas Portal Services</p>
+                <p className="font-space text-xs font-semibold uppercase tracking-[0.2em] text-[#B69B72]">Seven Seas Portal Services</p>
                 <div className="mt-4 grid grid-cols-2 gap-4">
-                  <Link to="/find-lawyers" onClick={() => setMegaMenuOpen(false)} className="group flex gap-3 rounded-2xl p-3 hover:bg-slate-50 dark:hover:bg-slate-900 text-left">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
+                  <Link to="/find-lawyers" onClick={() => setMegaMenuOpen(false)} className="group flex gap-3 rounded-2xl p-3 hover:bg-[#FAF9F5] dark:hover:bg-[#202A3B]/60 text-left transition-colors">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#202A3B] text-[#B69B72] dark:bg-[#202A3B] dark:text-[#D9C7A5]">
                       <Layers size={18} />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-slate-900 group-hover:text-blue-600 dark:text-white dark:group-hover:text-blue-400">Lawyer Directory</h4>
+                      <h4 className="font-semibold text-[#202A3B] group-hover:text-[#B69B72] dark:text-white dark:group-hover:text-[#D9C7A5]">Lawyer Directory</h4>
                       <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Browse and book vetted specialists.</p>
                     </div>
                   </Link>
 
-                  <Link to="/dashboard/track" onClick={() => setMegaMenuOpen(false)} className="group flex gap-3 rounded-2xl p-3 hover:bg-slate-50 dark:hover:bg-slate-900 text-left">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/50 dark:text-purple-400">
+                  <Link to="/dashboard/track" onClick={() => setMegaMenuOpen(false)} className="group flex gap-3 rounded-2xl p-3 hover:bg-[#FAF9F5] dark:hover:bg-[#202A3B]/60 text-left transition-colors">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#B69B72]/15 text-[#B69B72] dark:bg-[#B69B72]/25 dark:text-[#D9C7A5]">
                       <Calendar size={18} />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-slate-900 group-hover:text-purple-600 dark:text-white dark:group-hover:text-purple-400">Case Tracker</h4>
+                      <h4 className="font-semibold text-[#202A3B] group-hover:text-[#B69B72] dark:text-white dark:group-hover:text-[#D9C7A5]">Case Tracker</h4>
                       <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Real-time scheduling milestones.</p>
                     </div>
                   </Link>
 
-                  <Link to="/dashboard/documents" onClick={() => setMegaMenuOpen(false)} className="group flex gap-3 rounded-2xl p-3 hover:bg-slate-50 dark:hover:bg-slate-900 text-left">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
+                  <Link to="/dashboard/documents" onClick={() => setMegaMenuOpen(false)} className="group flex gap-3 rounded-2xl p-3 hover:bg-[#FAF9F5] dark:hover:bg-[#202A3B]/60 text-left transition-colors">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#202A3B]/10 text-[#202A3B] dark:bg-white/10 dark:text-white">
                       <FileText size={18} />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-slate-900 group-hover:text-emerald-600 dark:text-white dark:group-hover:text-emerald-400">Document Vault</h4>
+                      <h4 className="font-semibold text-[#202A3B] group-hover:text-[#B69B72] dark:text-white dark:group-hover:text-[#D9C7A5]">Document Vault</h4>
                       <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Secure drag & drop files.</p>
                     </div>
                   </Link>
 
-                  <Link to="/dashboard" onClick={() => setMegaMenuOpen(false)} className="group flex gap-3 rounded-2xl p-3 hover:bg-slate-50 dark:hover:bg-slate-900 text-left">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400">
+                  <Link to="/dashboard" onClick={() => setMegaMenuOpen(false)} className="group flex gap-3 rounded-2xl p-3 hover:bg-[#FAF9F5] dark:hover:bg-[#202A3B]/60 text-left transition-colors">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EDE9FE] text-[#5B21B6] dark:bg-[#EDE9FE]/20 dark:text-[#DDD6FE]">
                       <ShieldCheck size={18} />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-slate-900 group-hover:text-amber-600 dark:text-white dark:group-hover:text-amber-400">Aid Application</h4>
+                      <h4 className="font-semibold text-[#202A3B] group-hover:text-[#B69B72] dark:text-white dark:group-hover:text-[#D9C7A5]">Aid Application</h4>
                       <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Submit requests for court counsel.</p>
                     </div>
                   </Link>
                 </div>
 
-                <div className="mt-5 rounded-2xl bg-slate-50 p-4 dark:bg-slate-900">
+                <div className="mt-5 rounded-2xl bg-[#FAF9F5] p-4 dark:bg-[#202A3B]/40 border border-[#202A3B]/5 dark:border-white/5">
                   <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                     <span className="flex items-center gap-1.5"><HelpCircle size={14} /> Need aid eligibility info?</span>
-                    <Link to="/#faq" onClick={() => setMegaMenuOpen(false)} className="font-bold text-blue-600 hover:underline dark:text-blue-400">Read FAQs</Link>
+                    <Link to="/#faq" onClick={() => setMegaMenuOpen(false)} className="font-bold text-[#B69B72] hover:underline dark:text-[#D9C7A5]">Read FAQs</Link>
                   </div>
                 </div>
               </div>
@@ -251,12 +308,13 @@ const TopBar = ({ sidebarCollapsed, onToggleSidebar }) => {
 
 
 
-          {/* AI Button */}
-          <Link to="/dashboard/ai-recommend" className="topbar-ai-btn group">
-            <Sparkles size={11} className="text-[#B69D74] group-hover:animate-spin transition-all" />
-            <span>Ask AI</span>
-            <span className="topbar-ai-pulse" />
-          </Link>
+          {/* AI Button - ONLY FOR CITIZEN USER / APPLICANT */}
+          {(user?.role === 'User' || user?.role === 'Applicant') && (
+            <Link to="/dashboard/ai-recommend" className="btn-ai px-3 py-1.5 rounded-xl flex items-center gap-1.5 text-xs font-bold shadow-xs">
+              <Sparkles size={13} className="text-[#5B21B6]" />
+              <span>AI Matcher</span>
+            </Link>
+          )}
 
           <div className="topbar-divider" />
 
@@ -295,25 +353,56 @@ const TopBar = ({ sidebarCollapsed, onToggleSidebar }) => {
                     <p className="text-[12px] font-bold text-[var(--text-primary)]">Notifications</p>
                     <p className="text-[10px] text-[var(--text-muted)] mt-0.5">{unreadCount} unread</p>
                   </div>
-                  <span className="badge badge-blue text-[9px]">{unreadCount} New</span>
+                  <div className="flex items-center gap-2">
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={handleMarkAllRead}
+                        className="text-[10px] text-blue-500 hover:text-blue-600 font-bold flex items-center gap-1 hover:underline"
+                        title="Mark all as read"
+                      >
+                        <CheckCheck size={12} /> Mark Read
+                      </button>
+                    )}
+                    <span className="badge badge-blue text-[9px]">{unreadCount} New</span>
+                  </div>
                 </div>
-                <div>
-                  {notifications.map((n) => (
-                    <div key={n.id} className="topbar-notif-item">
+                <div className="max-h-80 overflow-y-auto">
+                  {notificationsList.map((n) => (
+                    <div
+                      key={n.id}
+                      onClick={() => handleNotificationClick(n)}
+                      className={`topbar-notif-item cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60 transition ${
+                        n.unread ? 'bg-blue-50/30 dark:bg-blue-950/20' : ''
+                      }`}
+                    >
                       <div
                         className="topbar-notif-dot"
                         style={{ background: n.unread ? n.color : 'transparent', border: n.unread ? 'none' : '1px solid var(--border-strong)' }}
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="text-[11px] font-semibold text-[var(--text-primary)] truncate">{n.title}</p>
-                        <p className="text-[10px] text-[var(--text-muted)] truncate mt-0.5">{n.body}</p>
+                        <div className="flex items-center justify-between gap-1">
+                          <p className={`text-[11px] truncate ${n.unread ? 'font-bold text-[var(--text-primary)]' : 'font-semibold text-[var(--text-secondary)]'}`}>
+                            {n.title}
+                          </p>
+                          <span className="text-[9px] text-[var(--text-muted)] shrink-0">{n.time}</span>
+                        </div>
+                        <p className="text-[10px] text-[var(--text-muted)] line-clamp-2 mt-0.5">{n.body}</p>
                       </div>
-                      <span className="text-[9.5px] text-[var(--text-muted)] shrink-0">{n.time}</span>
                     </div>
                   ))}
                 </div>
-                <div className="topbar-notif-footer">
-                  <button className="text-[11px] text-[var(--blue-600)] font-semibold hover:underline">View all</button>
+                <div className="topbar-notif-footer flex items-center justify-between">
+                  <span className="text-[10px] text-[var(--text-muted)]">Live Case Updates</span>
+                  <button
+                    onClick={() => {
+                      if (user?.role === 'Lawyer') navigate('/dashboard/assigned-cases');
+                      else navigate('/dashboard/applications');
+                      setShowNotifs(false);
+                    }}
+                    className="text-[11px] text-[var(--blue-600)] font-semibold hover:underline"
+                  >
+                    View cases →
+                  </button>
                 </div>
               </div>
             )}
@@ -359,7 +448,21 @@ const TopBar = ({ sidebarCollapsed, onToggleSidebar }) => {
                   </span>
                 </div>
 
-                <div className="mt-4 border-t border-slate-100 pt-3 dark:border-slate-800">
+                <div className="py-2 border-b border-slate-100 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfileOpen(false);
+                      navigate('/dashboard/profile');
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-xl transition cursor-pointer"
+                  >
+                    <User size={14} className="text-[#B69B72]" />
+                    <span>View Profile & Credentials</span>
+                  </button>
+                </div>
+
+                <div className="mt-2 pt-1">
                   <button
                     type="button"
                     onClick={() => {

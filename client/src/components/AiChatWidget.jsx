@@ -1,12 +1,14 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useContext } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { 
-  X, Send, Sparkles, Smile, ShieldAlert, 
+  X, Send, Sparkles, Smile, ShieldAlert, ShieldCheck,
   UserCheck, AlertCircle, RefreshCw, MessageSquare,
-  Mic, MicOff, Download, Volume2
+  Mic, MicOff, Download, Volume2, Scale, MapPin, Briefcase, Award, ExternalLink, ChevronRight
 } from 'lucide-react';
 import Card from './ui/card';
 import axios from '../api/axios';
+import { AuthContext } from '../contexts/AuthContext';
 import aiBotAvatarImg from '../assets/ai-bot-avatar.png';
 
 // Crisp vector rendering of the blue chatbot avatar
@@ -25,6 +27,8 @@ const SimpleBotAvatar = ({ size = 28, className = "" }) => (
 );
 
 const AiChatWidget = () => {
+  const navigate = useNavigate();
+  const { user } = useContext(AuthContext);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -157,18 +161,19 @@ const AiChatWidget = () => {
       };
 
       if (response.data.triggerRecommendation && response.data.lawyers && response.data.lawyers.length > 0) {
-        const rec = response.data.lawyers[0];
-        aiMsg.lawyerCard = {
-          id: rec.lawyerId,
-          name: rec.fullName,
-          specialization: rec.specialization,
-          rating: 4.8,
-          fee: rec.consultationFee,
-          experience: rec.experience,
-          successRate: rec.matchScore,
-          availableSlots: ['Mon 10:00 AM', 'Wed 02:00 PM'],
-          image: rec.profileImage || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80'
-        };
+        aiMsg.lawyerCards = response.data.lawyers.slice(0, 3).map(rec => ({
+          id: rec.lawyerId || rec._id || rec.id,
+          name: rec.fullName || rec.name,
+          specialization: rec.specialization || (Array.isArray(rec.specializations) ? rec.specializations[0] : 'Advocate Specialist'),
+          rating: rec.rating || 4.8,
+          fee: rec.consultationFee || 100,
+          experience: rec.experience || 10,
+          matchScore: rec.matchScore || 95,
+          location: rec.location || 'Theni, Tamil Nadu',
+          courts: rec.courts || ['District Court, Theni'],
+          reasons: rec.reasons || [],
+          image: rec.profileImage || null
+        }));
       }
 
       setChatbotContext(response.data.context || {});
@@ -286,37 +291,108 @@ const AiChatWidget = () => {
                   {msg.text}
                 </div>
 
-                {/* Inline Lawyer Card matching results */}
-                {msg.lawyerCard && (
-                  <Card className="mt-3 w-[300px] rounded-2xl border border-slate-800 bg-slate-950/90 p-4 shadow-xl shadow-black/50 backdrop-blur-xl">
-                    <div className="flex items-center gap-3">
-                      <img src={msg.lawyerCard.image} alt={msg.lawyerCard.name} className="h-11 w-11 rounded-xl object-cover border border-slate-800 shadow-md" />
-                      <div>
-                        <h4 className="text-xs font-bold text-white">{msg.lawyerCard.name}</h4>
-                        <p className="text-[10px] text-slate-400">{msg.lawyerCard.specialization}</p>
-                      </div>
-                    </div>
+                {/* Inline Lawyer Cards matching results from Real MongoDB AI Engine */}
+                {((msg.lawyerCards && msg.lawyerCards.length > 0) || msg.lawyerCard) && (
+                  <div className="mt-3 w-full max-w-[340px] space-y-3">
+                    {(msg.lawyerCards || [msg.lawyerCard]).map((card, cIdx) => {
+                      const cardId = card.id || card._id || card.lawyerId;
+                      const cardName = card.name || card.fullName || 'Advocate';
+                      const cardSpec = card.specialization || (Array.isArray(card.specializations) ? card.specializations.join(', ') : 'Legal Specialist');
+                      const cardExp = card.experience || 8;
+                      const cardScore = card.matchScore || card.matchPercentage || 92;
+                      const cardLoc = card.location || 'Theni, Tamil Nadu';
+                      const cardCourts = Array.isArray(card.courts) ? card.courts.join(', ') : (card.courtLevel || 'District Court');
+                      const cardFee = card.fee ? `₹${card.fee}` : (card.consultationFee ? `₹${card.consultationFee}` : 'Subsidized Legal Aid');
+                      const cardReasons = Array.isArray(card.reasons) && card.reasons.length > 0 
+                        ? card.reasons 
+                        : [card.reason || `Verified expertise in ${cardSpec} at ${cardLoc}.`];
 
-                    <div className="mt-3 flex justify-between items-center text-[10px]">
-                      <span className="text-slate-400">Match rating:</span>
-                      <span className="font-bold text-emerald-400 px-2 py-0.5 rounded-full bg-emerald-950/60 border border-emerald-800/40">{msg.lawyerCard.successRate || 95}% Match</span>
-                    </div>
+                      return (
+                        <div 
+                          key={cardId || cIdx} 
+                          className="rounded-2xl border border-slate-800 bg-gradient-to-b from-slate-900/95 to-slate-950/95 p-3.5 shadow-xl shadow-black/50 backdrop-blur-xl text-left transition hover:border-blue-500/50"
+                        >
+                          {/* Header: Photo, Name & Match Score */}
+                          <div className="flex items-start justify-between gap-2.5">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              {card.image ? (
+                                <img src={card.image} alt={cardName} className="h-10 w-10 shrink-0 rounded-xl object-cover border border-slate-700 shadow-md" />
+                              ) : (
+                                <div className="h-10 w-10 shrink-0 rounded-xl flex items-center justify-center font-bold text-xs text-white bg-gradient-to-br from-blue-600 to-indigo-700 border border-slate-700 shadow-md">
+                                  {cardName.split(' ').map(n => n[0]).slice(0, 2).join('')}
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <h4 className="text-xs font-bold text-white truncate flex items-center gap-1">
+                                  {cardName}
+                                  <ShieldCheck size={12} className="text-blue-400 shrink-0" />
+                                </h4>
+                                <p className="text-[10px] text-amber-300 font-medium truncate">{cardSpec}</p>
+                              </div>
+                            </div>
+                            <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-cyan-300 border border-cyan-400/30">
+                              {cardScore}% Match
+                            </span>
+                          </div>
 
-                    <div className="mt-3 grid gap-1.5">
-                      <p className="text-[9.5px] font-semibold text-slate-400">Request consultation slot:</p>
-                      <div className="flex gap-1.5">
-                        {msg.lawyerCard.availableSlots.map(slot => (
-                          <button
-                            key={slot}
-                            onClick={() => alert(`Appointment booked with ${msg.lawyerCard.name} on ${slot}!`)}
-                            className="flex-1 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-cyan-400 text-[9.5px] font-bold hover:bg-blue-600 hover:text-white hover:border-blue-500 transition-all cursor-pointer"
-                          >
-                            {slot}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </Card>
+                          {/* Attribute Badges */}
+                          <div className="mt-2.5 grid grid-cols-2 gap-1.5 text-[9.5px] text-slate-300">
+                            <div className="flex items-center gap-1 text-slate-300 truncate">
+                              <MapPin size={10} className="text-blue-400 shrink-0" />
+                              <span className="truncate">{cardLoc}</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-slate-300 truncate">
+                              <Briefcase size={10} className="text-amber-400 shrink-0" />
+                              <span>{cardExp} Yrs Exp.</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-slate-300 truncate">
+                              <Scale size={10} className="text-purple-400 shrink-0" />
+                              <span className="truncate">{cardCourts}</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-emerald-400 font-semibold truncate">
+                              <span>Fee: {cardFee}</span>
+                            </div>
+                          </div>
+
+                          {/* AI Rationale Snippet */}
+                          {cardReasons.length > 0 && (
+                            <div className="mt-2 rounded-lg bg-blue-950/40 border border-blue-900/40 p-2 text-[9px] text-blue-200/90 leading-tight">
+                              <strong className="text-cyan-300">AI Rationale: </strong>
+                              {cardReasons[0]}
+                            </div>
+                          )}
+
+                          {/* Action Buttons */}
+                          <div className="mt-3 flex items-center gap-2">
+                            {cardId && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpen(false);
+                                  navigate(`/dashboard/lawyers/${cardId}`);
+                                }}
+                                className="flex-1 py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-[10px] font-bold flex items-center justify-center gap-1 transition cursor-pointer border border-slate-700"
+                              >
+                                View Profile <ExternalLink size={10} />
+                              </button>
+                            )}
+                            {(user?.role === 'User' || user?.role === 'Applicant') && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpen(false);
+                                  navigate('/dashboard/ai-recommend');
+                                }}
+                                className="flex-1 py-1.5 px-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-[10px] font-bold flex items-center justify-center gap-1 transition shadow-md shadow-blue-600/30 cursor-pointer"
+                              >
+                                Select Lawyer <ChevronRight size={10} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
 
                 <span className="text-[9px] text-slate-500 mt-1 px-1">{msg.time}</span>

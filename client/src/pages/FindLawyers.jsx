@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useContext } from 'react';
 import { Link } from 'react-router-dom';
+import { AuthContext } from '../contexts/AuthContext';
 import {
   Search, Star, CheckCircle, Heart, Scale, X,
   MessageSquare, MapPin, TrendingUp, Briefcase, Zap,
@@ -8,7 +9,7 @@ import {
 import { motion } from 'framer-motion';
 import { lawyers } from '../data/lawyersData';
 
-const FILTER_OPTIONS = ['All', 'Family Law', 'Criminal Law', 'Corporate Law', 'Civil Law', 'Property'];
+const FILTER_OPTIONS = ['All', 'Property', 'Criminal', 'Family', 'Civil', 'Accident / MACT', 'Revenue & Land', 'Consumer', 'Labour'];
 const SORT_OPTIONS = [
   { value: 'match', label: 'Best Match' },
   { value: 'rating', label: 'Highest Rated' },
@@ -16,9 +17,10 @@ const SORT_OPTIONS = [
   { value: 'experience', label: 'Most Experienced' },
 ];
 
-const ACCENT_COLORS = ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#B69D74', '#EC4899', '#14B8A6'];
+const ACCENT_COLORS = ['#B69B72', '#202A3B', '#D9C7A5', '#9A7E55', '#2D3A50', '#B69B72'];
 
 const FindLawyers = () => {
+  const { user } = useContext(AuthContext);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('All');
   const [sortBy, setSortBy] = useState('match');
@@ -90,12 +92,12 @@ const FindLawyers = () => {
             {/* Stats row */}
             <div className="flex gap-3 shrink-0">
               {[
-                { val: `${filteredLawyers.length}`, label: 'Advocates', color: '#3B82F6' },
-                { val: '96%', label: 'Avg Match', color: '#10B981' },
-                { val: '48hr', label: 'Response', color: '#B69D74' },
+                { val: `${filteredLawyers.length}`, label: 'Advocates', color: '#202A3B' },
+                { val: '96%', label: 'Avg Match', color: '#B69B72' },
+                { val: '48hr', label: 'Response', color: '#B69B72' },
               ].map(({ val, label, color }) => (
                 <div key={label} className="fl-stat-chip">
-                  <div className="text-lg font-black leading-none" style={{ color, fontFamily: 'var(--font-display)' }}>{val}</div>
+                  <div className="text-lg font-black leading-none dark:text-[#D9C7A5]" style={{ color, fontFamily: 'var(--font-display)' }}>{val}</div>
                   <div className="text-[9.5px] text-[var(--text-muted)] font-semibold mt-0.5">{label}</div>
                 </div>
               ))}
@@ -131,16 +133,28 @@ const FindLawyers = () => {
           </div>
 
           {/* Filter pills */}
-          <div className="mt-4 flex flex-wrap gap-2">
-            {FILTER_OPTIONS.map(opt => (
-              <button
-                key={opt}
-                onClick={() => setFilter(opt)}
-                className={`fl-filter-pill ${filter === opt ? 'fl-filter-active' : ''}`}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap gap-2">
+              {FILTER_OPTIONS.map(opt => (
+                <button
+                  key={opt}
+                  onClick={() => setFilter(opt)}
+                  className={`fl-filter-pill ${filter === opt ? 'fl-filter-active' : ''}`}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+
+            {(user?.role === 'User' || user?.role === 'Applicant') && (
+              <Link
+                to="/dashboard/ai-recommend"
+                className="btn-ai inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-xs"
               >
-                {opt}
-              </button>
-            ))}
+                <Zap size={12} className="text-[#5B21B6]" />
+                <span>Launch AI Lawyer Matcher</span>
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -149,7 +163,7 @@ const FindLawyers = () => {
       <div className="flex items-center justify-between px-1">
         <p className="text-[12px] text-[var(--text-muted)]">
           <span className="font-bold text-[var(--text-primary)]">{filteredLawyers.length}</span> advocates found
-          {search && <> · "<span className="text-[var(--blue-600)]">{search}</span>"</>}
+          {search && <> · "<span className="text-[#B69B72]">{search}</span>"</>}
         </p>
         <div className="flex items-center gap-1.5">
           {[
@@ -159,7 +173,7 @@ const FindLawyers = () => {
             <button
               key={mode}
               onClick={() => setViewMode(mode)}
-              className={`w-7 h-7 rounded-lg flex items-center justify-center text-[13px] font-bold transition-all ${viewMode === mode ? 'bg-[var(--blue-600)] text-white' : 'bg-[var(--bg-card)] text-[var(--text-muted)] border border-[var(--border-color)]'}`}
+              className={`w-7 h-7 rounded-lg flex items-center justify-center text-[13px] font-bold transition-all ${viewMode === mode ? 'bg-[#202A3B] text-white border border-[#B69B72]/40' : 'bg-[var(--bg-card)] text-[var(--text-muted)] border border-[var(--border-color)]'}`}
             >
               {icon}
             </button>
@@ -207,11 +221,20 @@ const FindLawyers = () => {
                   {/* Avatar + info */}
                   <div className={`flex gap-4 items-start ${viewMode === 'list' ? 'flex-1' : ''}`}>
                     <div className="relative shrink-0">
-                      <img
-                        src={lawyer.image}
-                        alt={lawyer.name}
-                        className="fl-avatar"
-                      />
+                      {lawyer.image ? (
+                        <img
+                          src={lawyer.image}
+                          alt={lawyer.name}
+                          className="fl-avatar"
+                        />
+                      ) : (
+                        <div
+                          className="fl-avatar flex items-center justify-center font-bold text-lg text-white select-none shadow-sm"
+                          style={{ background: `linear-gradient(135deg, ${accent}, ${accent}99)` }}
+                        >
+                          {lawyer.name.split(' ').map(n => n[0]).join('')}
+                        </div>
+                      )}
                       <div className="fl-avatar-ring" style={{ borderColor: `${accent}35` }} />
                       <span className="fl-verified-dot" style={{ background: accent }}>
                         <CheckCircle size={9} className="text-white" />
@@ -226,6 +249,11 @@ const FindLawyers = () => {
                         {lawyer.location && (
                           <span className="flex items-center gap-1 text-[10px] text-[var(--text-muted)]">
                             <MapPin size={9} /> {lawyer.location}
+                          </span>
+                        )}
+                        {(lawyer.court || lawyer.courtPractice) && (
+                          <span className="flex items-center gap-1 text-[10px] text-amber-700 dark:text-amber-400 font-medium bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded-md border border-amber-200/50 dark:border-amber-900/30">
+                            <Scale size={9} /> {lawyer.court || lawyer.courtPractice}
                           </span>
                         )}
                       </div>
@@ -332,7 +360,13 @@ const FindLawyers = () => {
               {compareList.map((lawyer, ci) => (
                 <div key={lawyer.id} className="space-y-4">
                   <div className="h-10 flex items-center gap-3">
-                    <img src={lawyer.image} alt={lawyer.name} className="h-9 w-9 rounded-xl object-cover" />
+                    {lawyer.image ? (
+                      <img src={lawyer.image} alt={lawyer.name} className="h-9 w-9 rounded-xl object-cover" />
+                    ) : (
+                      <div className="h-9 w-9 rounded-xl flex items-center justify-center font-bold text-xs text-white shrink-0 bg-blue-600">
+                        {lawyer.name.split(' ').map(n => n[0]).join('')}
+                      </div>
+                    )}
                     <div>
                       <p className="text-[12px] font-bold text-[var(--text-primary)] leading-none">{lawyer.name}</p>
                       <p className="text-[9.5px] text-[var(--text-muted)] mt-0.5">{lawyer.title}</p>

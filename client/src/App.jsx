@@ -17,7 +17,6 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import AiChatWidget from './components/AiChatWidget';
 import CommandPalette from './components/CommandPalette';
 import ThemeCustomizer from './components/ThemeCustomizer';
-import CursorGlow from './components/CursorGlow';
 
 function LawyerRedirect() {
   const { lawyerId } = useParams();
@@ -35,7 +34,6 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
-          <CursorGlow />
           <Routes>
             <Route path="/"                 element={<Home />} />
             <Route path="/login"            element={<Login />} />

@@ -4,4 +4,7 @@ dist/
 judgments.db
 uploads/
 *.log
+logs/
+__pycache__/
+*.pyc
 .DS_Store

@@ -59,9 +59,6 @@ const JudgmentsSearch = () => {
         transition={{ duration: 0.4 }}
         className="rounded-[24px] glass-card p-8 shadow-xl relative overflow-hidden"
       >
-        {/* Glow details */}
-        <div className="absolute -top-10 -right-10 h-40 w-40 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
-        
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between relative z-10">
           <div className="text-left">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50/50 dark:bg-blue-950/40 border border-blue-200/50 dark:border-blue-900/40 text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest">

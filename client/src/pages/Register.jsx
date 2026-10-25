@@ -1,8 +1,9 @@
 import { useContext, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import axios from '../api/axios';
 import { 
   UserCheck, Shield, ChevronRight, ChevronLeft, UploadCloud, 
-  Trash2, Sparkles, Check, CheckCircle2, RefreshCw 
+  Trash2, Sparkles, Check, CheckCircle2, RefreshCw, Scale 
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Navbar from '../components/Navbar';
@@ -15,7 +16,7 @@ import InteractiveCanvasBackground from '../components/InteractiveCanvasBackgrou
 
 const steps = [
   { id: 1, name: 'Identity' },
-  { id: 2, name: 'Address' },
+  { id: 2, name: 'Address & District' },
   { id: 3, name: 'Verification' },
   { id: 4, name: 'Preview' }
 ];
@@ -29,11 +30,17 @@ const Register = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    password: '',
     phone: '',
     role: 'Applicant',
     address: '',
-    city: '',
-    zip: '',
+    city: 'Theni',
+    district: 'Theni',
+    state: 'Tamil Nadu',
+    zip: '625531',
+    specialization: 'Civil Litigation',
+    barRegistrationNumber: '',
+    courtLevel: 'District Court',
     idType: 'Aadhaar Card',
     idNumber: '',
   });
@@ -42,6 +49,7 @@ const Register = () => {
   const [profilePic, setProfilePic] = useState(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   // Form field changes
   const handleTextChange = (e) => {
@@ -69,13 +77,13 @@ const Register = () => {
   // Validation before changing step
   const isStepValid = () => {
     if (currentStep === 1) {
-      return formData.name && formData.email && formData.phone;
+      return formData.name && formData.email && formData.phone && formData.password;
     }
     if (currentStep === 2) {
-      return formData.address && formData.city && formData.zip;
+      return formData.address && formData.city && formData.district && formData.state;
     }
     if (currentStep === 3) {
-      return formData.idNumber && uploadedFile;
+      return formData.idNumber;
     }
     return true;
   };
@@ -95,8 +103,25 @@ const Register = () => {
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setSubmitError('');
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const payload = {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        phone: formData.phone,
+        role: formData.role || 'Applicant',
+        address: formData.address,
+        city: formData.city,
+        district: formData.district,
+        state: formData.state,
+        location: formData.district || formData.city,
+        specialization: formData.role === 'Lawyer' ? formData.specialization : undefined,
+        barRegistrationNumber: formData.role === 'Lawyer' ? formData.barRegistrationNumber : undefined,
+        courtLevel: formData.role === 'Lawyer' ? formData.courtLevel : undefined,
+      };
+
+      const res = await axios.post('/auth/register', payload);
       
       setSuccess(true);
       setTimeout(() => {
@@ -104,6 +129,8 @@ const Register = () => {
       }, 1500);
     } catch (err) {
       console.error(err);
+      setSubmitError(err.response?.data?.message || err.message || 'Registration failed');
+      alert(`Registration Error: ${err.response?.data?.message || err.message}`);
     } finally {
       setLoading(false);
     }
@@ -115,7 +142,7 @@ const Register = () => {
   }, [currentStep]);
 
   return (
-    <div className="relative min-h-screen bg-slate-50 text-slate-950 transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100 overflow-hidden">
+    <div className="relative min-h-screen bg-[var(--bg-app)] text-[var(--text-primary)] transition-colors duration-300 overflow-hidden">
       <InteractiveCanvasBackground density={50} maxDistance={120} speed={0.5} interactive={true} />
       <Navbar />
 
@@ -128,15 +155,15 @@ const Register = () => {
         >
           
           {/* STEP INDICATOR HEADER */}
-          <div className="border-b border-slate-100 bg-slate-50/50 p-8 dark:border-slate-800 dark:bg-slate-900/30">
+          <div className="border-b border-slate-100 bg-[#FAF9F5]/70 p-8 dark:border-slate-800 dark:bg-[#202A3B]/40">
             
             {/* Title */}
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <p className="text-xs uppercase tracking-[0.25em] font-semibold text-blue-600 dark:text-blue-400">Lexora Registration</p>
+                <p className="text-xs uppercase tracking-[0.25em] font-semibold text-[#B69B72]">Seven Seas Portal</p>
                 <h1 className="font-space text-2xl font-bold tracking-tight mt-1">Create legal aid account</h1>
               </div>
-              <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-600 dark:bg-blue-900/40 dark:text-blue-300">
+              <span className="rounded-full bg-[#B69B72]/15 px-3 py-1 text-xs font-bold text-[#B69B72] dark:bg-[#B69B72]/25 dark:text-[#D9C7A5]">
                 Step {currentStep} of {steps.length}
               </span>
             </div>
@@ -147,7 +174,7 @@ const Register = () => {
               {/* Stepper background progress bar line */}
               <div className="absolute top-1/2 left-0 h-0.5 w-full -translate-y-1/2 bg-slate-200 dark:bg-slate-800 -z-10" />
               <div 
-                className="absolute top-1/2 left-0 h-0.5 bg-blue-600 transition-all duration-300 -z-10" 
+                className="absolute top-1/2 left-0 h-0.5 bg-[#B69B72] transition-all duration-300 -z-10" 
                 style={{ width: `${progressPercent}%` }}
               />
 
@@ -159,15 +186,15 @@ const Register = () => {
                     <div 
                       className={`flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold border transition duration-300 ${
                         completed 
-                          ? 'bg-blue-600 border-blue-600 text-white' 
+                          ? 'bg-[#202A3B] border-[#B69B72] text-[#B69B72]' 
                           : active 
-                          ? 'bg-white border-blue-600 text-blue-600 ring-4 ring-blue-50 dark:bg-slate-950 dark:ring-blue-950/40' 
-                          : 'bg-white border-slate-200 text-slate-400 dark:bg-slate-950 dark:border-slate-800'
+                          ? 'bg-white border-[#B69B72] text-[#202A3B] ring-4 ring-[#B69B72]/20 dark:bg-[#1B2332] dark:text-[#D9C7A5]' 
+                          : 'bg-white border-slate-200 text-slate-400 dark:bg-[#1B2332] dark:border-slate-800'
                       }`}
                     >
                       {completed ? <Check size={14} /> : step.id}
                     </div>
-                    <span className={`text-[10px] font-bold tracking-wider uppercase ${active ? 'text-slate-900 dark:text-white font-semibold' : 'text-slate-400'}`}>
+                    <span className={`text-[10px] font-bold tracking-wider uppercase ${active ? 'text-[#202A3B] dark:text-white font-semibold' : 'text-slate-400'}`}>
                       {step.name}
                     </span>
                   </div>
@@ -194,33 +221,38 @@ const Register = () => {
               {/* STEP 1: PERSONAL DETAILS */}
               {currentStep === 1 && (
                 <div className="space-y-4 animate-fade-in-up">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Step 1: Onboarding Credentials</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Step 1: Onboarding Credentials & Role</p>
+                  
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Full Legal Name</label>
+                      <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Registration Role *</label>
+                      <select 
+                        name="role"
+                        value={formData.role}
+                        onChange={handleTextChange}
+                        className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+                      >
+                        <option value="Applicant">Applicant (Citizen Legal Seeker)</option>
+                        <option value="Lawyer">Lawyer (Advocate / Legal Counsel)</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Full Legal Name *</label>
                       <Input 
                         name="name"
                         value={formData.name}
                         onChange={handleTextChange}
-                        placeholder="Johnathan Doe"
+                        placeholder={formData.role === 'Lawyer' ? 'Adv. Rajesh Verma' : 'Johnathan Doe'}
                         className="rounded-2xl bg-white/70 dark:bg-slate-900/50"
                         required
                       />
                     </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Registration Role</label>
-                      <input 
-                        type="text"
-                        value="Applicant (Citizen Legal Seeker)"
-                        disabled
-                        className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-xs font-bold text-slate-450 outline-none dark:border-slate-800 dark:bg-slate-900"
-                      />
-                    </div>
                   </div>
 
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-4 sm:grid-cols-3">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Email Address</label>
+                      <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Email Address *</label>
                       <Input 
                         type="email"
                         name="email"
@@ -232,26 +264,86 @@ const Register = () => {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Phone Contact</label>
+                      <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Password *</label>
+                      <Input 
+                        type="password"
+                        name="password"
+                        value={formData.password}
+                        onChange={handleTextChange}
+                        placeholder="Min. 8 characters"
+                        className="rounded-2xl bg-white/70 dark:bg-slate-900/50"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Phone Contact *</label>
                       <Input 
                         name="phone"
                         value={formData.phone}
                         onChange={handleTextChange}
-                        placeholder="+1 (555) 012-3456"
+                        placeholder="+91 98765 43210"
                         className="rounded-2xl bg-white/70 dark:bg-slate-900/50"
                         required
                       />
                     </div>
                   </div>
+
+                  {formData.role === 'Lawyer' && (
+                    <div className="p-4 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-900/40 rounded-2xl grid gap-3 sm:grid-cols-3 animate-fade-in">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-blue-800 dark:text-blue-300">Bar Council Reg. No. *</label>
+                        <input
+                          name="barRegistrationNumber"
+                          value={formData.barRegistrationNumber}
+                          onChange={handleTextChange}
+                          placeholder="e.g. BAR-DL-10928"
+                          className="form-input text-xs"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-blue-800 dark:text-blue-300">Specialization</label>
+                        <select
+                          name="specialization"
+                          value={formData.specialization}
+                          onChange={handleTextChange}
+                          className="form-input text-xs"
+                        >
+                          <option value="Civil Litigation">Civil Litigation</option>
+                          <option value="Criminal Defense">Criminal Defense</option>
+                          <option value="Family & Matrimonial">Family & Matrimonial</option>
+                          <option value="Property & Real Estate">Property & Real Estate</option>
+                          <option value="Corporate & Commercial">Corporate & Commercial</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-blue-800 dark:text-blue-300">Practice Court Tier</label>
+                        <select
+                          name="courtLevel"
+                          value={formData.courtLevel}
+                          onChange={handleTextChange}
+                          className="form-input text-xs"
+                        >
+                          <option value="District Court">District Court</option>
+                          <option value="High Court">High Court</option>
+                          <option value="Supreme Court">Supreme Court</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* STEP 2: ADDRESS */}
+              {/* STEP 2: ADDRESS & DISTRICT ALLOCATION */}
               {currentStep === 2 && (
                 <div className="space-y-4 animate-fade-in-up">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Step 2: Geographical Demographics</p>
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Step 2: Geographical Demographics & Jurisdiction</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Your registered district determines the default local court allocation for case filings.</p>
+                  </div>
+
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Street Address</label>
+                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Street Address *</label>
                     <Input 
                       name="address"
                       value={formData.address}
@@ -261,29 +353,70 @@ const Register = () => {
                       required
                     />
                   </div>
+
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">City</label>
+                      <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">District (Local Jurisdiction) *</label>
+                      <Input 
+                        name="district"
+                        value={formData.district}
+                        onChange={handleTextChange}
+                        placeholder="e.g. Chennai, Bangalore, Colombo, Mumbai"
+                        className="rounded-2xl bg-white/70 dark:bg-slate-900/50"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">State / Province *</label>
+                      <Input 
+                        name="state"
+                        value={formData.state}
+                        onChange={handleTextChange}
+                        placeholder="e.g. Tamil Nadu, Karnataka, Western Province"
+                        className="rounded-2xl bg-white/70 dark:bg-slate-900/50"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">City / Municipality *</label>
                       <Input 
                         name="city"
                         value={formData.city}
                         onChange={handleTextChange}
-                        placeholder="New Delhi"
+                        placeholder="e.g. Chennai / Metro"
                         className="rounded-2xl bg-white/70 dark:bg-slate-900/50"
                         required
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Postal Zip Code</label>
+                      <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Postal / Zip Code</label>
                       <Input 
                         name="zip"
                         value={formData.zip}
                         onChange={handleTextChange}
-                        placeholder="110001"
+                        placeholder="600001"
                         className="rounded-2xl bg-white/70 dark:bg-slate-900/50"
-                        required
                       />
                     </div>
+                  </div>
+
+                  {/* Dynamic Court Allocation Card */}
+                  <div className="p-3.5 bg-purple-50/80 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-900/50 rounded-2xl text-xs space-y-1 animate-fade-in">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-purple-900 dark:text-purple-300 flex items-center gap-1.5">
+                        <Scale size={16} /> Default Trial Court Allocation
+                      </span>
+                      <span className="badge badge-purple text-[9px] uppercase font-bold">Auto-Routed</span>
+                    </div>
+                    <p className="text-purple-800 dark:text-purple-300 text-xs font-semibold mt-1">
+                      🏛️ {formData.district ? `${formData.district} District Court` : 'Local District Court (enter district above)'}
+                    </p>
+                    <p className="text-[10px] text-purple-600/80 dark:text-purple-400">
+                      Tier: <strong>District Court</strong> {formData.state ? `· State: ${formData.state}` : ''} · Court dockets and legal aid will automatically route to this venue.
+                    </p>
                   </div>
                 </div>
               )}
@@ -305,6 +438,7 @@ const Register = () => {
                         <option value="Aadhaar Card">Aadhaar Card</option>
                         <option value="Driver License">Driver's License</option>
                         <option value="Passport">Passport</option>
+                        <option value="Bar Association ID">Bar Association ID</option>
                       </select>
                     </div>
                     <div className="space-y-1.5">
@@ -367,22 +501,32 @@ const Register = () => {
                     </div>
 
                     {/* Summary list */}
-                    <div className="grid gap-4 sm:grid-cols-2 rounded-2xl bg-slate-50 p-5 dark:bg-slate-900 text-xs">
+                    <div className="grid gap-3 sm:grid-cols-2 rounded-2xl bg-slate-50 p-5 dark:bg-slate-900 text-xs">
                       <div>
                         <p className="text-slate-400">Full Name</p>
-                        <p className="font-semibold mt-1 text-slate-900 dark:text-white">{formData.name}</p>
+                        <p className="font-semibold mt-0.5 text-slate-900 dark:text-white">{formData.name}</p>
                       </div>
                       <div>
-                        <p className="text-slate-400">Role Request</p>
-                        <p className="font-semibold mt-1 text-slate-900 dark:text-white">{formData.role}</p>
+                        <p className="text-slate-400">Role</p>
+                        <p className="font-semibold mt-0.5 text-blue-600 dark:text-blue-400">{formData.role}</p>
                       </div>
                       <div>
                         <p className="text-slate-400">Email Address</p>
-                        <p className="font-semibold mt-1 text-slate-900 dark:text-white">{formData.email}</p>
+                        <p className="font-semibold mt-0.5 text-slate-900 dark:text-white">{formData.email}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-400">Registered District & State</p>
+                        <p className="font-semibold mt-0.5 text-slate-900 dark:text-white">{formData.district}, {formData.state}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-400">Allocated Default Court</p>
+                        <p className="font-semibold mt-0.5 text-purple-700 dark:text-purple-300">
+                          🏛️ {formData.district ? `${formData.district} District Court` : 'District Court'}
+                        </p>
                       </div>
                       <div>
                         <p className="text-slate-400">ID proof</p>
-                        <p className="font-semibold mt-1 text-slate-900 dark:text-white">{uploadedFile || 'None'}</p>
+                        <p className="font-semibold mt-0.5 text-slate-900 dark:text-white">{uploadedFile || formData.idNumber || 'Recorded'}</p>
                       </div>
                     </div>
                   </div>
@@ -392,7 +536,7 @@ const Register = () => {
                       <Shield size={14} className="text-blue-500" /> Terms of Legal Declaration
                     </span>
                     <p className="mt-1 leading-relaxed">
-                      I declare that all details submitted correspond to my certified legal identity. I agree to register on Lexora systems and participate in scheduled hearings under court rules.
+                      I declare that all details submitted correspond to my certified legal identity. My district details will establish my primary court allocation under procedural law.
                     </p>
                   </div>
                 </div>
@@ -416,7 +560,7 @@ const Register = () => {
                   <Button 
                     type="button" 
                     onClick={handleNext} 
-                    className="rounded-xl flex items-center gap-1 h-10 px-5"
+                    className="btn-gold rounded-xl flex items-center gap-1 h-10 px-5 text-white"
                   >
                     Next <ChevronRight size={14} />
                   </Button>
@@ -424,7 +568,7 @@ const Register = () => {
                   <Button 
                     type="submit" 
                     disabled={loading}
-                    className="rounded-xl flex items-center gap-2 h-10 px-6 bg-blue-600 hover:bg-blue-500"
+                    className="btn-gold rounded-xl flex items-center gap-2 h-10 px-6 text-white"
                   >
                     {loading && <RefreshCw size={14} className="animate-spin" />}
                     Complete Registration

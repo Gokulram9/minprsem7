@@ -6,25 +6,25 @@ const notifications = [
 ];
 
 const Notifications = () => (
-  <div className="space-y-8 rounded-[2rem] border border-slate-200/70 bg-white/95 p-8 shadow-[0_24px_72px_-36px_rgba(15,23,42,0.25)] backdrop-blur-xl dark:border-slate-800/70 dark:bg-slate-950/95">
+  <div className="space-y-8 rounded-[2rem] border border-slate-200/70 bg-white dark:bg-[#1B2332] p-8 shadow-sm backdrop-blur-xl dark:border-slate-800">
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <p className="text-sm uppercase tracking-[0.3em] text-sky-500">Notifications</p>
-        <h2 className="text-3xl font-semibold text-slate-950 dark:text-white">Alerts and case updates</h2>
+        <p className="text-xs uppercase tracking-[0.3em] font-bold text-[#B69B72]">Notifications</p>
+        <h2 className="text-3xl font-semibold text-[#202A3B] dark:text-white" style={{ fontFamily: 'var(--font-display)' }}>Alerts and case updates</h2>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">All your important portal notifications in one place.</p>
       </div>
-      <button className="rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white transition hover:bg-slate-800">Mark all read</button>
+      <button className="btn-gold rounded-full px-5 py-2 text-xs font-bold text-white transition">Mark all read</button>
     </div>
 
     <div className="space-y-4">
       {notifications.map((notification) => (
-        <div key={notification.title} className="rounded-[1.75rem] border border-slate-200/70 bg-slate-50 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/90">
+        <div key={notification.title} className="rounded-2xl border border-slate-200/70 bg-[#FAF9F5] p-5 shadow-sm dark:border-slate-800 dark:bg-[#202A3B]/40">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h3 className="text-lg font-semibold text-slate-950 dark:text-white">{notification.title}</h3>
-              <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{notification.message}</p>
+              <h3 className="text-base font-bold text-[#202A3B] dark:text-white">{notification.title}</h3>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{notification.message}</p>
             </div>
-            <span className="text-sm text-slate-500 dark:text-slate-400">{notification.time}</span>
+            <span className="text-xs font-semibold text-[#B69B72] dark:text-[#D9C7A5]">{notification.time}</span>
           </div>
         </div>
       ))}

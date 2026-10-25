@@ -156,11 +156,9 @@ const EmailSimulator = () => {
                   </p>
 
                   <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/60 flex items-center gap-4 my-4">
-                    <img 
-                      src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=100&q=80" 
-                      alt="Aisha Verma" 
-                      className="h-12 w-12 rounded-xl object-cover"
-                    />
+                    <div className="h-12 w-12 rounded-xl flex items-center justify-center font-bold text-sm text-white bg-blue-600 shrink-0">
+                      AV
+                    </div>
                     <div>
                       <h4 className="font-bold text-slate-900 dark:text-white text-[11px]">Aisha Verma</h4>
                       <p className="text-[10px] text-slate-400">Senior Family Counsel • 12 Yrs Exp • 96% Match</p>

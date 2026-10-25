@@ -4,6 +4,13 @@ const { MongoMemoryServer } = require('mongodb-memory-server');
 const express = require('express');
 
 // Models & Routes
+jest.mock('../server/middleware/authMiddleware', () => ({
+  protect: (req, res, next) => next()
+}));
+jest.mock('../server/middleware/roleMiddleware', () => ({
+  authorizeRoles: () => (req, res, next) => next()
+}));
+
 const Application = require('../server/models/Application');
 const CaseParty = require('../server/models/CaseParty');
 const Lawyer = require('../server/models/Lawyer');

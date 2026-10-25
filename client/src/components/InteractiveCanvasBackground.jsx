@@ -5,7 +5,7 @@ const InteractiveCanvasBackground = ({
   density = 80, 
   maxDistance = 120, 
   speed = 0.6,
-  interactive = true 
+  interactive = false 
 }) => {
   const canvasRef = useRef(null);
 
@@ -54,18 +54,6 @@ const InteractiveCanvasBackground = ({
         if (this.y < 0) this.y = 0;
         if (this.y > height) this.y = height;
 
-        // Mouse interaction
-        if (interactive && mouse.x !== null && mouse.y !== null) {
-          const dx = mouse.x - this.x;
-          const dy = mouse.y - this.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < mouse.radius) {
-            const force = (mouse.radius - dist) / mouse.radius;
-            // Draw a gentle attraction
-            this.x += (dx / dist) * force * 0.4;
-            this.y += (dy / dist) * force * 0.4;
-          }
-        }
       }
 
       draw() {
@@ -149,26 +137,8 @@ const InteractiveCanvasBackground = ({
       init();
     };
 
-    const handleMouseMove = (e) => {
-      const rect = canvas.getBoundingClientRect();
-      mouse.x = e.clientX - rect.left;
-      mouse.y = e.clientY - rect.top;
-    };
-
-    const handleMouseLeave = () => {
-      mouse.x = null;
-      mouse.y = null;
-    };
-
     // Setup events
     window.addEventListener('resize', handleResize);
-    
-    // Capture events on parent to enable broader hover zone
-    const targetParent = canvas.parentElement || canvas;
-    if (interactive) {
-      targetParent.addEventListener('mousemove', handleMouseMove);
-      targetParent.addEventListener('mouseleave', handleMouseLeave);
-    }
 
     // Initialize & Start
     init();
@@ -177,13 +147,9 @@ const InteractiveCanvasBackground = ({
     // Cleanup
     return () => {
       window.removeEventListener('resize', handleResize);
-      if (interactive && targetParent) {
-        targetParent.removeEventListener('mousemove', handleMouseMove);
-        targetParent.removeEventListener('mouseleave', handleMouseLeave);
-      }
       cancelAnimationFrame(animationFrameId);
     };
-  }, [colorOverride, density, maxDistance, speed, interactive]);
+  }, [colorOverride, density, maxDistance, speed]);
 
   return (
     <canvas 

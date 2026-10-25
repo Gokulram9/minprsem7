@@ -6,7 +6,7 @@ import {
   Users, Scale, ShieldAlert, FolderOpen, Calendar,
   Sparkles, BarChart2, ChevronLeft, MessageSquare, User,
   Home, LogOut, Settings, ArrowUpRight, Zap, Shield,
-  ChevronDown, Search, CreditCard
+  ChevronDown, Search, CreditCard, Gavel
 } from 'lucide-react';
 
 const Sidebar = ({ collapsed, onToggle }) => {
@@ -22,13 +22,23 @@ const Sidebar = ({ collapsed, onToggle }) => {
     { to: '/dashboard', end: true, label: 'Dashboard',   icon: Home,         group: 'overview' },
     { to: '/dashboard/users',       label: 'Users',        icon: Users,        group: 'management' },
     { to: '/dashboard/lawyers',     label: 'Lawyers',      icon: Scale,        group: 'management' },
+    { to: '/dashboard/judges',      label: 'Judges',       icon: Gavel,        group: 'management' },
     { to: '/dashboard/cases',       label: 'Cases',        icon: FolderOpen,   group: 'management' },
     { to: '/dashboard/scheduling',  label: 'Hearings',     icon: Calendar,     group: 'management' },
     { to: '/dashboard/applications',label: 'Legal Aid',    icon: ShieldAlert,  group: 'management' },
+    { to: '/dashboard/messages',    label: 'Communications', icon: MessageSquare, group: 'management' },
     { to: '/dashboard/judgments',   label: 'Precedents',   icon: Scale,        group: 'intelligence' },
-    { to: '/dashboard/ai-recommend',label: 'Smart Matcher', icon: Sparkles,     group: 'intelligence' },
     { to: '/dashboard/analytics',   label: 'Reports',      icon: BarChart2,    group: 'intelligence' },
     { to: '/dashboard/profile',     label: 'Settings',     icon: Settings,     group: 'account' },
+  ];
+
+  const courtStaffMenuItems = [
+    { to: '/dashboard', end: true,  label: 'Dashboard',       icon: Home,          group: 'overview' },
+    { to: '/dashboard/cases',       label: 'Case Dockets',    icon: FolderOpen,    group: 'management' },
+    { to: '/dashboard/scheduling',  label: 'Hearings Schedule', icon: Calendar,    group: 'management' },
+    { to: '/dashboard/messages',    label: 'Communications',  icon: MessageSquare, group: 'workspace' },
+    { to: '/dashboard/documents',   label: 'Documents',       icon: FolderOpen,    group: 'workspace' },
+    { to: '/dashboard/profile',     label: 'Profile',         icon: User,          group: 'account' },
   ];
 
   const userMenuItems = [
@@ -37,7 +47,7 @@ const Sidebar = ({ collapsed, onToggle }) => {
     { to: '/dashboard/cases',       label: 'My Cases',     icon: Scale,         group: 'workspace' },
     { to: '/dashboard/fees',        label: 'Lawyer Fees',  icon: CreditCard,    group: 'workspace' },
     { to: '/dashboard/judgments',   label: 'Precedents',   icon: Scale,         group: 'workspace' },
-    { to: '/dashboard/ai-recommend',label: 'Counsel Matcher', icon: Sparkles,      group: 'workspace' },
+    { to: '/dashboard/ai-recommend',label: 'AI Lawyer Match', icon: Sparkles,      group: 'workspace', aiTag: true },
     { to: '/dashboard/schedule',    label: 'Schedule',     icon: Calendar,      group: 'workspace' },
     { to: '/dashboard/documents',   label: 'Documents',    icon: FolderOpen,    group: 'workspace' },
     { to: '/dashboard/messages',    label: 'Messages',     icon: MessageSquare, group: 'workspace' },
@@ -56,7 +66,17 @@ const Sidebar = ({ collapsed, onToggle }) => {
     { to: '/dashboard/profile',      label: 'Profile',        icon: User,           group: 'account' },
   ];
 
-  const menuItems = role === 'Admin' ? adminMenuItems : (role === 'Lawyer' ? lawyerMenuItems : userMenuItems);
+  const judgeMenuItems = [
+    { to: '/dashboard', end: true,  label: 'Dashboard',       icon: Home,           group: 'overview' },
+    { to: '/dashboard/assigned-cases',label: 'My Cases',       icon: Scale,          group: 'workspace' },
+    { to: '/dashboard/todays-hearings',label: "Today's Bench", icon: Gavel,          group: 'workspace' },
+    { to: '/dashboard/schedule',     label: 'Calendar',       icon: Calendar,       group: 'workspace' },
+    { to: '/dashboard/documents',    label: 'Documents',      icon: FolderOpen,     group: 'workspace' },
+    { to: '/dashboard/judgments',    label: 'Precedents',     icon: Scale,          group: 'intelligence' },
+    { to: '/dashboard/profile',      label: 'Chambers Profile', icon: User,         group: 'account' },
+  ];
+
+  const menuItems = role === 'Admin' ? adminMenuItems : (role === 'CourtStaff' ? courtStaffMenuItems : (role === 'Lawyer' ? lawyerMenuItems : (role === 'Judge' ? judgeMenuItems : userMenuItems)));
 
   const filteredMenuItems = menuItems.filter(item =>
     item.label.toLowerCase().includes(searchQuery.toLowerCase())
@@ -78,10 +98,12 @@ const Sidebar = ({ collapsed, onToggle }) => {
   }, []);
 
   const roleConfig = {
-    Admin:    { label: 'System Control', color: '#AEA668', bg: 'rgba(174,166,104,0.12)', border: 'rgba(174,166,104,0.2)', iconBg: 'rgba(174,166,104,0.2)' },
-    Lawyer:   { label: 'Lawyer Portal',  color: '#60B3D1', bg: 'rgba(96,179,209,0.12)',  border: 'rgba(96,179,209,0.2)',  iconBg: 'rgba(96,179,209,0.2)' },
-    User:     { label: 'Citizen Space',  color: '#AEA668', bg: 'rgba(174,166,104,0.12)', border: 'rgba(174,166,104,0.2)', iconBg: 'rgba(174,166,104,0.2)' },
-    Applicant:{ label: 'Citizen Space',  color: '#AEA668', bg: 'rgba(174,166,104,0.12)', border: 'rgba(174,166,104,0.2)', iconBg: 'rgba(174,166,104,0.2)' },
+    Admin:    { label: 'Court Administration', color: '#B69B72', bg: 'rgba(182,155,114,0.15)', border: 'rgba(182,155,114,0.3)', iconBg: 'rgba(182,155,114,0.25)' },
+    CourtStaff:{ label: 'Court Registry & Staff', color: '#B69B72', bg: 'rgba(182,155,114,0.15)', border: 'rgba(182,155,114,0.3)', iconBg: 'rgba(182,155,114,0.25)' },
+    Lawyer:   { label: 'Advocate Chambers',    color: '#D9C7A5', bg: 'rgba(217,199,165,0.15)',  border: 'rgba(217,199,165,0.3)',  iconBg: 'rgba(217,199,165,0.25)' },
+    Judge:    { label: 'Judicial Bench',       color: '#B69B72', bg: 'rgba(182,155,114,0.15)', border: 'rgba(182,155,114,0.3)', iconBg: 'rgba(182,155,114,0.25)' },
+    User:     { label: 'Citizen Portal',       color: '#D9C7A5', bg: 'rgba(217,199,165,0.15)',  border: 'rgba(217,199,165,0.3)',  iconBg: 'rgba(217,199,165,0.25)' },
+    Applicant:{ label: 'Citizen Portal',       color: '#D9C7A5', bg: 'rgba(217,199,165,0.15)',  border: 'rgba(217,199,165,0.3)',  iconBg: 'rgba(217,199,165,0.25)' },
   };
   const rc = roleConfig[role] || roleConfig['User'];
   const userInitial = (user?.name || 'U').charAt(0).toUpperCase();
@@ -92,45 +114,31 @@ const Sidebar = ({ collapsed, onToggle }) => {
         collapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-[268px] opacity-100'
       }`}
       style={{
-        background: (role === 'User' || role === 'Applicant')
-          ? 'linear-gradient(180deg, #363940 0%, #2D2F35 30%, #292B30 70%, #202226 100%)'
-          : (role === 'Lawyer')
-          ? 'linear-gradient(180deg, #012641 0%, #011E33 30%, #011728 70%, #000E1B 100%)'
-          : (role === 'Admin' || role === 'CourtStaff')
-          ? 'linear-gradient(180deg, #212530 0%, #1D2029 30%, #181B22 70%, #111319 100%)'
-          : 'linear-gradient(180deg, #0D1626 0%, #111E32 30%, #0F1A2D 70%, #0D1626 100%)',
-        borderRight: collapsed ? 'none' : '1px solid rgba(255,255,255,0.05)',
-        boxShadow: collapsed ? 'none' : '4px 0 24px rgba(0,0,0,0.3)',
+        background: 'linear-gradient(180deg, #202A3B 0%, #171F2D 50%, #0E131D 100%)',
+        borderRight: collapsed ? 'none' : '1px solid rgba(245,245,239,0.08)',
+        boxShadow: collapsed ? 'none' : '4px 0 32px rgba(0,0,0,0.4)',
       }}
     >
-      {/* Top glow line */}
-      <div style={{ height: '2px', background: `linear-gradient(90deg, transparent, ${rc.color}, #3B82F6, #8B5CF6, transparent)`, opacity: 0.5 }} />
-
       {/* ── HEADER ── */}
       <div className="px-4 pt-5 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {/* Animated logo mark */}
+            {/* Logo mark */}
             <div
               className="sidebar-logo-mark h-10 w-10 rounded-2xl flex items-center justify-center shrink-0 relative overflow-hidden"
               style={{ background: rc.bg, border: `1px solid ${rc.border}` }}
             >
-              <div className="absolute inset-0 sidebar-logo-shimmer" />
               <Logo className="h-5 w-5 relative z-10" strokeWidth={2} style={{ color: rc.color }} />
             </div>
 
             <div>
               <p
-                className="text-[15px] font-bold leading-none tracking-wide uppercase bg-clip-text text-transparent"
-                style={{
-                  fontFamily: 'var(--font-display)',
-                  backgroundImage: `linear-gradient(90deg, ${rc.color} 0%, ${(role === 'User' || role === 'Applicant') ? '#E6D5B8' : (role === 'Lawyer') ? '#F4FBFD' : (role === 'Admin' || role === 'CourtStaff') ? '#E6D5B8' : '#E6D5B8'} 50%, ${rc.color} 100%)`,
-                  display: 'inline-block'
-                }}
+                className="text-[15px] font-extrabold leading-none tracking-wide text-white"
+                style={{ fontFamily: 'var(--font-display)' }}
               >
                 Seven Seas
               </p>
-              <p className="text-[9px] font-bold tracking-[0.18em] uppercase mt-0.5" style={{ color: '#ffffff' }}>
+              <p className="text-[9px] font-bold tracking-[0.18em] uppercase mt-1 text-slate-400">
                 {rc.label}
               </p>
             </div>
@@ -138,7 +146,7 @@ const Sidebar = ({ collapsed, onToggle }) => {
 
           <button
             onClick={onToggle}
-            className="sidebar-collapse-btn h-7 w-7 rounded-lg flex items-center justify-center transition-all"
+            className="sidebar-collapse-btn h-7 w-7 rounded-lg flex items-center justify-center transition-all bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white"
             title="Collapse sidebar"
           >
             <ChevronLeft size={13} />
@@ -147,29 +155,21 @@ const Sidebar = ({ collapsed, onToggle }) => {
 
         {/* User identity chip */}
         <div
-          className="sidebar-user-chip mt-4 flex items-center gap-2.5 px-3 py-2 rounded-xl"
-          style={{ background: rc.bg, border: `1px solid ${rc.border}` }}
+          className="sidebar-user-chip mt-4 flex items-center gap-2.5 px-3 py-2.5 rounded-xl border"
+          style={{ background: rc.bg, borderColor: rc.border }}
         >
           <div
-            className="h-8 w-8 rounded-lg flex items-center justify-center text-xs font-black text-white shrink-0"
+            className="h-8 w-8 rounded-lg flex items-center justify-center text-xs font-black text-white shrink-0 shadow-sm"
             style={{
-              background: (role === 'User' || role === 'Applicant')
-                ? 'linear-gradient(135deg,#908852,#AEA668)'
-                : (role === 'Lawyer')
-                ? 'linear-gradient(135deg,#3B8EA8,#60B3D1)'
-                : (role === 'Admin' || role === 'CourtStaff')
-                ? 'linear-gradient(135deg,#908852,#AEA668)'
-                : rc.color === '#3B82F6'
-                ? 'linear-gradient(135deg,#1D4ED8,#3B82F6)'
-                : 'linear-gradient(135deg,#6D28D9,#8B5CF6)',
+              background: `linear-gradient(135deg, ${rc.color}, #202A3B)`,
             }}
           >
             {userInitial}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[11px] font-bold truncate" style={{ color: (role === 'Admin' || role === 'CourtStaff') ? '#AEA668' : '#ffffff' }}>{user?.name || 'User'}</p>
+            <p className="text-[11.5px] font-bold text-white truncate">{user?.name || 'User'}</p>
             <p className="text-[9px] font-bold uppercase tracking-wider mt-0.5" style={{ color: rc.color }}>
-              {role}
+              {rc.label}
             </p>
           </div>
           <span className="relative flex h-2 w-2 shrink-0">
@@ -188,7 +188,7 @@ const Sidebar = ({ collapsed, onToggle }) => {
             placeholder="Search navigation..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-white/30 focus:outline-none focus:border-[#B69D74]/50 focus:ring-1 focus:ring-[#B69D74]/20 transition"
+            className="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-white/30 focus:outline-none focus:border-[#B69B72]/50 focus:ring-1 focus:ring-[#B69B72]/20 transition"
           />
         </div>
       </div>
@@ -221,7 +221,7 @@ const Sidebar = ({ collapsed, onToggle }) => {
                       }`
                     }
                     style={({ isActive }) => isActive ? {
-                      color: (role === 'User' || role === 'Applicant') ? '#E9ECDB' : (role === 'Lawyer') ? '#F4FBFD' : (role === 'Admin' || role === 'CourtStaff') ? '#AEA668' : '#E6D5B8',
+                      color: '#FFFFFF',
                       background: `linear-gradient(90deg, ${rc.bg}, rgba(255,255,255,0.01))`,
                     } : {}}
                   >
@@ -249,8 +249,8 @@ const Sidebar = ({ collapsed, onToggle }) => {
 
                         {item.aiTag && (
                           <span
-                            className="text-[7.5px] font-extrabold tracking-wider px-1.5 py-0.5 rounded-full nav-label"
-                            style={{ background: 'rgba(139,92,246,0.2)', color: '#C4B5FD', border: '1px solid rgba(139,92,246,0.25)' }}
+                            className="text-[8px] font-extrabold tracking-wider px-2 py-0.5 rounded-full nav-label"
+                            style={{ background: '#EDE9FE', color: '#5B21B6', border: '1px solid #DDD6FE' }}
                           >
                             AI
                           </span>

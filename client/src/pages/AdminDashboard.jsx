@@ -6,6 +6,9 @@ import { ThemeContext } from '../contexts/ThemeContext';
 import ThemeCustomizer from '../components/ThemeCustomizer';
 import { motion } from 'framer-motion';
 import archangelRaguelImg from '../assets/archangel-raguel.png';
+import { initSocket, subscribeToHearingUpdates, subscribeToCaseUpdates, subscribeToNotifications } from '../services/socket';
+import ChatCenter from '../components/chat/ChatCenter';
+import ProfilePage from './ProfilePage';
 import {
   Users,
   Scale,
@@ -44,7 +47,13 @@ import {
   LockKeyhole,
   Cpu,
   FileDown,
-  User
+  User,
+  Gavel,
+  MapPin,
+  Building,
+  Clock,
+  AlertCircle,
+  ArrowRight
 } from 'lucide-react';
 
 const AdminDashboard = ({ activeTab = 'dashboard' }) => {
@@ -61,6 +70,42 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
   const [selectedLawyer, setSelectedLawyer] = useState(null);
   const [selectedCase, setSelectedCase] = useState(null);
   const [selectedApplication, setSelectedApplication] = useState(null);
+
+  // Judge & Lawyer Assignment states
+  const [judges, setJudges] = useState([]);
+  const [assignJudgeModalCase, setAssignJudgeModalCase] = useState(null);
+  const [selectedJudgeId, setSelectedJudgeId] = useState('');
+  const [selectedCourtroom, setSelectedCourtroom] = useState('Courtroom Hall 1');
+  const [assignJudgeNotes, setAssignJudgeNotes] = useState('');
+  const [isAssigningJudge, setIsAssigningJudge] = useState(false);
+  const [assignLawyerModalCase, setAssignLawyerModalCase] = useState(null);
+  const [selectedLawyerId, setSelectedLawyerId] = useState('');
+  const [isAssigningLawyer, setIsAssigningLawyer] = useState(false);
+
+  // Judge Management & Court Elevation States
+  const [judgeSubTab, setJudgeSubTab] = useState('registry'); // 'registry' | 'awaiting' | 'elevation-requests'
+  const [judgeRecords, setJudgeRecords] = useState([]);
+  const [pendingCourtChanges, setPendingCourtChanges] = useState([]);
+  const [unassignedCases, setUnassignedCases] = useState([]);
+  const [reassignmentReason, setReassignmentReason] = useState('');
+  const [showCreateJudgeModal, setShowCreateJudgeModal] = useState(false);
+  const [createJudgeForm, setCreateJudgeForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    designation: 'District Judge',
+    courtLevel: 'District Court',
+    courtName: 'District Court, Coimbatore',
+    district: 'Coimbatore',
+    state: 'Tamil Nadu',
+    courtroom: 'Courtroom 1',
+    availability: 'Available',
+    status: 'Active',
+    experienceYears: 10
+  });
+  const [reviewCourtChangeModal, setReviewCourtChangeModal] = useState(null);
+  const [courtChangeDecision, setCourtChangeDecision] = useState({ status: 'Approved', remarks: '' });
+  const [isSubmittingCourtChange, setIsSubmittingCourtChange] = useState(false);
 
   // Forms states
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
@@ -99,18 +144,112 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
         verification: a.verificationStatus || 'Pending'
       }));
       setApplications(apps);
+
+      if (appResp.data.length > 0) {
+        const mappedCases = appResp.data.map(a => ({
+          _id: a._id,
+          id: a.caseId || a._id,
+          title: a.caseTitle,
+          type: a.caseType,
+          district: a.courtDetails?.district || a.location || 'Colombo',
+          tier: a.courtDetails?.courtTier || 'District Court',
+          judge: a.assignedJudge ? `Justice ${a.assignedJudge.name}` : (a.judge ? `Justice ${a.judge.name}` : 'Unassigned'),
+          assignedJudge: a.assignedJudge || a.judge,
+          lawyer: a.assignedLawyer ? `Adv. ${a.assignedLawyer.name}` : (a.chosenLawyer ? `Req: Adv. ${a.chosenLawyer.name}` : 'Unassigned'),
+          assignedLawyer: a.assignedLawyer || a.chosenLawyer,
+          courtroom: a.courtDetails?.courtName || a.court || 'Courtroom Hall 1',
+          priority: a.urgency || 'Medium',
+          status: a.status,
+          nextHearing: a.hearing?.hearingDate ? new Date(a.hearing.hearingDate).toLocaleDateString() : 'Pending Scheduling',
+          applicant: a.applicant?.name || 'Unknown',
+          applicantId: a.applicant?._id,
+          raw: a
+        }));
+        setCases(mappedCases);
+      }
       
+      const hearingResp = await axios.get('/hearings').catch(() => ({ data: [] }));
+      const hList = Array.isArray(hearingResp.data) ? hearingResp.data : (hearingResp.data?.data || []);
+      if (hList.length > 0) {
+        setHearings(hList.map(h => ({
+          _id: h._id,
+          id: h.hearingNumber ? `HR${h.hearingNumber}` : (h._id.slice(-6)),
+          caseId: h.application?._id || h.application,
+          caseTitle: h.application?.caseTitle || h.application?.type || 'General Litigation File',
+          judge: h.judgeName || 'Justice Shanmugam',
+          hall: h.courtroom || 'Courtroom Hall 1',
+          date: new Date(h.hearingDate).toLocaleDateString(),
+          time: h.timeSlot || '10:00 AM',
+          status: h.status || 'Scheduled'
+        })));
+      }
       const userResp = await axios.get('/admin/users');
-      const mappedUsers = userResp.data.map(u => ({
+      const allUsers = userResp.data;
+      const mappedUsers = allUsers.map(u => ({
         id: u._id,
+        _id: u._id,
         name: u.name,
         email: u.email,
+        role: u.role,
         phone: u.phone || 'N/A',
         status: 'Active',
         date: new Date(u.createdAt).toLocaleDateString(),
         cases: 0
       }));
-      setApplicants(mappedUsers.filter(u => u.role !== 'Admin'));
+      setApplicants(mappedUsers.filter(u => u.role === 'Applicant' || u.role === 'User'));
+
+      // Filter and register active Judges
+      const judgeUsers = allUsers.filter(u => u.role === 'Judge');
+      setJudges(judgeUsers);
+
+      // Filter Lawyers
+      const lawyerUsers = allUsers.filter(u => u.role === 'Lawyer');
+      if (lawyerUsers.length > 0) {
+        setLawyers(lawyerUsers.map(l => ({
+          id: l._id,
+          _id: l._id,
+          name: `Advocate ${l.name}`,
+          email: l.email,
+          license: l.barNumber || 'BC/SL/88219',
+          specialization: l.specialization || 'General Practice',
+          experience: l.experience || 10,
+          rating: 4.8,
+          successRate: 92,
+          status: 'Active',
+          verification: 'Verified',
+          availability: 'High'
+        })));
+      }
+
+      // Fetch dedicated Judge records from /judges/all
+      try {
+        const judgeResp = await axios.get('/judges/all');
+        if (judgeResp.data?.data) {
+          setJudgeRecords(judgeResp.data.data);
+        }
+      } catch (e) {
+        console.warn('Could not fetch /judges/all:', e);
+      }
+
+      // Fetch pending court change requests from /applications/pending-court-changes
+      try {
+        const courtChangeResp = await axios.get('/applications/pending-court-changes');
+        if (courtChangeResp.data?.data) {
+          setPendingCourtChanges(courtChangeResp.data.data);
+        }
+      } catch (e) {
+        console.warn('Could not fetch pending court changes:', e);
+      }
+
+      // Fetch unassigned cases from /applications/unassigned
+      try {
+        const unassignedResp = await axios.get('/applications/unassigned');
+        if (unassignedResp.data?.data) {
+          setUnassignedCases(unassignedResp.data.data);
+        }
+      } catch (e) {
+        console.warn('Could not fetch unassigned cases:', e);
+      }
     } catch (err) {
       console.error('Failed to load admin dashboard data:', err);
     }
@@ -162,20 +301,6 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
     { id: 2, title: 'Lawyer Audit Pending', block: 'Nidhi Sharma request verification.', time: '2 hrs ago' }
   ]);
 
-  // AI Matches / Prediction history
-  const [aiMatchStats] = useState({
-    avgMatchScore: 92,
-    mostRecommendedLawyer: 'Advocate Aisha Verma',
-    totalRecommendationsToday: 14
-  });
-
-  const [aiSettings, setAiSettings] = useState({
-    enabled: true,
-    minMatchScore: 85,
-    experienceWeight: 40,
-    successRateWeight: 45,
-    distanceWeight: 15,
-  });
 
   // User Actions
   const handleCreateUser = (e) => {
@@ -257,96 +382,197 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
     }
   };
 
-  // Hearing Scheduler
-  const handleScheduleHearingSubmit = (e) => {
+  // Real Hearing Scheduler connecting to backend MongoDB & notifying parties
+  const handleScheduleHearingSubmit = async (e) => {
     e.preventDefault();
-    const newId = `HR${900 + hearings.length + 1}`;
-    
-    // Simple conflict detection validation check
-    const hasConflict = hearings.some(h => h.date === hearingForm.date && h.time === hearingForm.time && h.hall === hearingForm.courtroom);
-    if (hasConflict) {
-      alert(`⚠️ Conflict Detected: Courtroom Hall ${hearingForm.courtroom} is already booked at ${hearingForm.time} on ${hearingForm.date}!`);
+    const matchedCase = cases.find(c => c.id === hearingForm.caseId || c._id === hearingForm.caseId);
+    if (!matchedCase) {
+      alert('Please choose a valid case docket.');
       return;
     }
 
-    const matchedCase = cases.find(c => c.id === hearingForm.caseId);
-    setHearings([...hearings, {
-      id: newId,
-      caseTitle: matchedCase ? matchedCase.title : 'General Litigation File',
-      judge: hearingForm.judge,
-      hall: hearingForm.courtroom,
-      date: hearingForm.date,
-      time: hearingForm.time,
-      status: 'Scheduled'
-    }]);
-    alert(`Success: Court Hearing ${newId} scheduled for case ${hearingForm.caseId}.`);
-    setShowScheduleHearingModal(false);
-    setHearingForm({ caseId: '', date: '', time: '', courtroom: 'Courtroom A', judge: 'Justice Shanmugam' });
+    try {
+      await axios.post('/hearings', {
+        applicationId: matchedCase._id || matchedCase.id,
+        hearingDate: hearingForm.date,
+        timeSlot: hearingForm.time || '10:00 AM',
+        courtroom: hearingForm.courtroom || 'Courtroom Hall 1',
+        judge: hearingForm.judge || 'Justice Shanmugam',
+        purpose: 'Court Hearing & Pre-Trial Proceedings'
+      });
+      alert(`Court hearing successfully scheduled for ${matchedCase.title}. Lawyer and Applicant notified in real time!`);
+      setShowScheduleHearingModal(false);
+      setHearingForm({ caseId: '', date: '', time: '', courtroom: 'Courtroom Hall 1', judge: 'Justice Shanmugam' });
+      fetchDashboardData();
+    } catch (err) {
+      alert(`Failed to schedule hearing: ${err.response?.data?.message || err.message}`);
+    }
+  };
+
+  // Real Judicial Bench Assignment handler
+  const handleAssignJudgeSubmit = async (e) => {
+    e.preventDefault();
+    if (!assignJudgeModalCase || !selectedJudgeId) {
+      alert('Please select a presiding judge to assign.');
+      return;
+    }
+    const isReassign = assignJudgeModalCase.assignedJudge || (assignJudgeModalCase.judge && assignJudgeModalCase.judge !== 'Unassigned');
+    if (isReassign && !reassignmentReason.trim() && !assignJudgeNotes.trim()) {
+      alert('Please provide a mandatory reassignment reason for the official judicial record.');
+      return;
+    }
+
+    setIsAssigningJudge(true);
+    try {
+      const res = await axios.patch(`/applications/${assignJudgeModalCase._id || assignJudgeModalCase.id}/assign-judge`, {
+        judgeId: selectedJudgeId,
+        courtroom: selectedCourtroom,
+        notes: assignJudgeNotes,
+        reason: reassignmentReason || assignJudgeNotes
+      });
+      alert(`🎉 Judicial Assignment Confirmed!\n\n${res.data.message || 'Judge assigned successfully.'}\n\nReal-time notifications dispatched to Citizen (User) and Assigned Advocate (Lawyer).`);
+      setAssignJudgeModalCase(null);
+      setSelectedJudgeId('');
+      setAssignJudgeNotes('');
+      setReassignmentReason('');
+      fetchDashboardData();
+    } catch (err) {
+      console.error(err);
+      alert(`Assignment Error: ${err.response?.data?.message || err.message}`);
+    } finally {
+      setIsAssigningJudge(false);
+    }
+  };
+
+  // Add New Judicial Officer Handler
+  const handleCreateJudgeSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await axios.post('/judges/create', createJudgeForm);
+      alert(`Judicial Officer Registered: Hon. Justice ${createJudgeForm.name} added to Judicial Registry.`);
+      setShowCreateJudgeModal(false);
+      setCreateJudgeForm({
+        name: '',
+        email: '',
+        phone: '',
+        designation: 'District Judge',
+        courtLevel: 'District Court',
+        courtName: 'District Court, Coimbatore',
+        district: 'Coimbatore',
+        state: 'Tamil Nadu',
+        courtroom: 'Courtroom 1',
+        availability: 'Available',
+        status: 'Active',
+        experienceYears: 10
+      });
+      fetchDashboardData();
+    } catch (err) {
+      console.error(err);
+      alert(`Failed to create judge record: ${err.response?.data?.message || err.message}`);
+    }
+  };
+
+  // Review Court Elevation / Change Request Handler
+  const handleReviewCourtChangeSubmit = async (e) => {
+    e.preventDefault();
+    if (!reviewCourtChangeModal) return;
+    setIsSubmittingCourtChange(true);
+    try {
+      const res = await axios.patch(`/applications/${reviewCourtChangeModal._id}/review-court-change`, {
+        status: courtChangeDecision.status,
+        remarks: courtChangeDecision.remarks
+      });
+      alert(`Court Elevation Decision Recorded: ${courtChangeDecision.status}!\n\nAutomated notifications and court docket transfer dispatched to Citizen and Assigned Counsel.`);
+      setReviewCourtChangeModal(null);
+      setCourtChangeDecision({ status: 'Approved', remarks: '' });
+      fetchDashboardData();
+    } catch (err) {
+      console.error(err);
+      alert(`Error reviewing court transfer: ${err.response?.data?.message || err.message}`);
+    } finally {
+      setIsSubmittingCourtChange(false);
+    }
+  };
+
+  // Real Legal Counsel Assignment handler
+  const handleAssignLawyerSubmit = async (e) => {
+    e.preventDefault();
+    if (!assignLawyerModalCase || !selectedLawyerId) {
+      alert('Please select a lawyer to assign.');
+      return;
+    }
+    setIsAssigningLawyer(true);
+    try {
+      await axios.patch(`/applications/${assignLawyerModalCase._id || assignLawyerModalCase.id}/assign-lawyer`, {
+        lawyerId: selectedLawyerId
+      });
+      alert('Advocate assigned successfully! Real-time notifications dispatched to user and counsel.');
+      setAssignLawyerModalCase(null);
+      setSelectedLawyerId('');
+      fetchDashboardData();
+    } catch (err) {
+      console.error(err);
+      alert(`Assignment Error: ${err.response?.data?.message || err.message}`);
+    } finally {
+      setIsAssigningLawyer(false);
+    }
   };
 
   return (
     <div className="space-y-6 animate-fade-in font-sans pb-10 text-slate-800 dark:text-slate-100">
       
-      {/* ── TOP SECTION: WELCOME & META ── */}
-      <div 
-        className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-6 overflow-hidden relative"
-        style={{ borderTop: '3px solid #AEA668' }}
-      >
-        <div className="flex-1 relative z-10">
-          <div 
-            className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider border"
-            style={{ 
-              color: '#AEA668', 
-              borderColor: 'rgba(174, 166, 104, 0.3)', 
-              backgroundColor: 'rgba(174, 166, 104, 0.08)' 
-            }}
-          >
-            👑 SUPER ADMIN SYSTEM CONTROL
+      {/* ── TOP SECTION: WELCOME & META (Only on Dashboard Overview) ── */}
+      {activeTab === 'dashboard' && (
+        <div 
+          className="bg-white dark:bg-[#1B2332] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-6 overflow-hidden relative"
+          style={{ borderTop: '3px solid #B69B72' }}
+        >
+          <div className="flex-1 relative z-10">
+            <h2 className="text-3xl font-extrabold text-slate-800 dark:text-white" style={{ fontFamily: 'var(--font-display)' }}>
+              Welcome, {user?.name || 'Admin'}
+            </h2>
+            <p className="text-xs text-slate-400 font-bold mt-1">
+              Last Login: Today at {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} · System Status: Healthy
+            </p>
           </div>
-          <h2 className="text-3xl font-extrabold text-slate-800 dark:text-white mt-1.5" style={{ fontFamily: 'var(--font-display)' }}>
-            Welcome back, {user?.name?.split(' ')[0] || 'Admin'}
-          </h2>
-          <p className="text-xs text-slate-450 font-bold mt-1">
-            Last Login: Today at {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} · System Status: Healthy
-          </p>
-        </div>
-        
-        <div className="flex items-center gap-4 relative z-10 shrink-0">
-          <div className="text-left md:text-right">
-            <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{todayDate}</p>
-            <p className="text-xs text-slate-400 font-semibold mt-0.5">{currentTime}</p>
+          
+          <div className="flex items-center gap-4 relative z-10 shrink-0">
+            <div className="text-left md:text-right">
+              <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{todayDate}</p>
+              <p className="text-xs text-[#B69B72] font-semibold mt-0.5">{currentTime}</p>
+            </div>
+            <div className="h-20 w-20 rounded-xl overflow-hidden border border-[#B69B72]/30 bg-slate-50 dark:bg-slate-900/50 p-1 flex items-center justify-center shrink-0">
+              <img 
+                src={archangelRaguelImg} 
+                alt="Archangel Raguel - Angel of Justice" 
+                className="h-full w-full object-cover rounded-lg"
+                title="Archangel Raguel, Angel of Justice and Harmony"
+              />
+            </div>
           </div>
-          <div className="h-20 w-20 rounded-xl overflow-hidden border border-[#AEA668]/20 bg-slate-50 dark:bg-slate-900/50 p-1 flex items-center justify-center shrink-0">
+
+          {/* Subtle background decorative watermark */}
+          <div className="absolute right-0 bottom-0 top-0 w-1/3 opacity-[0.04] pointer-events-none select-none overflow-hidden hidden md:block">
             <img 
               src={archangelRaguelImg} 
-              alt="Archangel Raguel - Angel of Justice" 
-              className="h-full w-full object-cover rounded-lg"
-              title="Archangel Raguel, Angel of Justice and Harmony"
+              alt="" 
+              className="h-full w-full object-cover scale-150 origin-bottom-right"
             />
           </div>
         </div>
-
-        {/* Subtle background decorative watermark */}
-        <div className="absolute right-0 bottom-0 top-0 w-1/3 opacity-[0.04] pointer-events-none select-none overflow-hidden hidden md:block">
-          <img 
-            src={archangelRaguelImg} 
-            alt="" 
-            className="h-full w-full object-cover scale-150 origin-bottom-right"
-          />
-        </div>
-      </div>
+      )}
 
       {/* ── 1. DASHBOARD OVERVIEW ── */}
       {activeTab === 'dashboard' && (
         <div className="space-y-6 animate-fade-in stagger">
 
           {/* ── OFFICIAL MINISTRY OF JUSTICE OVERSIGHT & COMMAND BANNER ── */}
-          <div className="bg-white dark:bg-[#0f172a] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-900 via-amber-500 to-indigo-900" />
+          <div className="bg-white dark:bg-[#1B2332] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#202A3B] via-[#B69B72] to-[#202A3B]" />
             
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-md bg-blue-900/10 dark:bg-blue-500/20 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-blue-900 dark:text-blue-300 border border-blue-900/20 dark:border-blue-500/30">
+                <span className="inline-flex items-center gap-1.5 rounded-md bg-[#202A3B]/10 dark:bg-[#B69B72]/20 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-[#202A3B] dark:text-[#D9C7A5] border border-[#202A3B]/20 dark:border-[#B69B72]/30">
                   🏛️ MINISTRY OF JUSTICE OVERSIGHT DESK
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-[9.5px] font-bold text-emerald-600 dark:text-emerald-400">
@@ -364,7 +590,7 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
             <div className="flex flex-wrap gap-2 shrink-0">
               <button
                 onClick={() => setShowScheduleHearingModal(true)}
-                className="btn-primary btn-sm flex items-center gap-1.5 shadow-sm"
+                className="btn-gold btn-sm flex items-center gap-1.5 shadow-sm"
               >
                 <Calendar size={13} /> Schedule Hearing
               </button>
@@ -373,12 +599,6 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
                 className="btn-secondary btn-sm flex items-center gap-1.5"
               >
                 <UserPlus size={13} /> Add User
-              </button>
-              <button
-                onClick={() => navigate('/dashboard/ai-recommend')}
-                className="btn-ai btn-sm flex items-center gap-1.5"
-              >
-                <Sparkles size={13} /> AI Match Engine
               </button>
             </div>
           </div>
@@ -389,26 +609,26 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
               {
                 label: 'Active Applicants', value: applicants.length,
                 sub: '+2 this week', trend: '+',
-                color: '#2563EB', bg: 'rgba(37,99,235,0.08)',
-                icon: Users, glowClass: 'glow-card-blue', borderCol: '#2563eb'
+                color: '#202A3B', bg: 'rgba(32,42,59,0.08)',
+                icon: Users, borderCol: '#202A3B'
               },
               {
                 label: 'Verified Advocates', value: lawyers.filter(l => l.verification === 'Verified').length,
                 sub: 'Bar Council verified', trend: null,
                 color: '#16A34A', bg: 'rgba(22,163,74,0.08)',
-                icon: Scale, glowClass: 'glow-card-green', borderCol: '#16A34A'
+                icon: Scale, borderCol: '#16A34A'
               },
               {
                 label: 'Pending Reviews', value: applications.filter(a => a.status === 'Submitted').length,
                 sub: 'Eligibility checks', trend: '!',
-                color: '#B69D74', bg: 'rgba(182,157,116,0.10)',
-                icon: ShieldAlert, glowClass: 'glow-card-gold', borderCol: '#B69D74'
+                color: '#B69B72', bg: 'rgba(182,155,114,0.12)',
+                icon: ShieldAlert, borderCol: '#B69B72'
               },
               {
                 label: 'Active Court Cases', value: cases.length,
                 sub: 'Ongoing litigations', trend: null,
-                color: '#7C3AED', bg: 'rgba(124,58,237,0.08)',
-                icon: FolderOpen, glowClass: 'glow-card-purple', borderCol: '#5009caff'
+                color: '#202A3B', bg: 'rgba(32,42,59,0.08)',
+                icon: FolderOpen, borderCol: '#B69B72'
               },
             ].map((stat, i) => {
               const Icon = stat.icon;
@@ -419,7 +639,7 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
                   transition={{ duration: 0.4, delay: i * 0.05 }}
                   whileHover={{ y: -4 }}
                   key={i} 
-                  className={`reports-glass-card p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm transition-all duration-300 ${stat.glowClass}`}
+                  className="reports-glass-card p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm transition-all duration-200"
                   style={{ borderBottom: `3px solid ${stat.borderCol}` }}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -784,6 +1004,400 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
         </div>
       )}
 
+      {/* ── 3.5 JUDGES MANAGEMENT TAB ── */}
+      {activeTab === 'judges' && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2.5" style={{ fontFamily: 'var(--font-display)' }}>
+                <span className="p-2 rounded-xl bg-purple-100 dark:bg-purple-950/70 text-purple-600 dark:text-purple-300">
+                  <Gavel size={22} />
+                </span>
+                Judicial Officers, Bench Roster & Court Allocation Management
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Administer judge registries, manual docket bench allocations, jurisdiction compatibility checks, and citizen court-level transfer requests.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowCreateJudgeModal(true)}
+                className="btn-primary bg-purple-600 hover:bg-purple-700 text-xs py-2.5 px-4 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-purple-600/20"
+              >
+                <Plus size={15} /> Add Judicial Officer
+              </button>
+            </div>
+          </div>
+
+          {/* Metric KPI Overview */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="p-4 rounded-2xl bg-white dark:bg-[#111928] border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400">
+                <Gavel size={22} />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Judicial Officers</p>
+                <p className="text-2xl font-black text-slate-800 dark:text-white mt-0.5">
+                  {judgeRecords.length > 0 ? judgeRecords.length : judges.length}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white dark:bg-[#111928] border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 size={22} />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Active Presiding Benches</p>
+                <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                  {judgeRecords.length > 0
+                    ? judgeRecords.filter(j => j.status === 'Active' || j.isActive !== false).length
+                    : judges.length}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white dark:bg-[#111928] border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400">
+                <AlertCircle size={22} />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Dockets Awaiting Bench</p>
+                <p className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-0.5">
+                  {cases.filter(c => c.judge === 'Unassigned' || !c.assignedJudge).length}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white dark:bg-[#111928] border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400">
+                <Building size={22} />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Court Elevation Requests</p>
+                <p className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-0.5">
+                  {pendingCourtChanges.length}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Sub-Tab Navigation Bar */}
+          <div className="flex border-b border-slate-200 dark:border-slate-800 gap-6">
+            <button
+              onClick={() => setJudgeSubTab('registry')}
+              className={`pb-3 font-semibold text-xs tracking-wide transition-all border-b-2 flex items-center gap-2 ${
+                judgeSubTab === 'registry'
+                  ? 'border-purple-600 text-purple-600 dark:text-purple-400 font-bold'
+                  : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+              }`}
+            >
+              <Gavel size={14} /> Judicial Registry ({judgeRecords.length > 0 ? judgeRecords.length : judges.length})
+            </button>
+            <button
+              onClick={() => setJudgeSubTab('awaiting')}
+              className={`pb-3 font-semibold text-xs tracking-wide transition-all border-b-2 flex items-center gap-2 ${
+                judgeSubTab === 'awaiting'
+                  ? 'border-purple-600 text-purple-600 dark:text-purple-400 font-bold'
+                  : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+              }`}
+            >
+              <Scale size={14} /> Dockets Awaiting Bench (
+              {cases.filter(c => c.judge === 'Unassigned' || !c.assignedJudge).length})
+            </button>
+            <button
+              onClick={() => setJudgeSubTab('elevation-requests')}
+              className={`pb-3 font-semibold text-xs tracking-wide transition-all border-b-2 flex items-center gap-2 ${
+                judgeSubTab === 'elevation-requests'
+                  ? 'border-purple-600 text-purple-600 dark:text-purple-400 font-bold'
+                  : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+              }`}
+            >
+              <Building size={14} /> Court Elevation Requests
+              {pendingCourtChanges.length > 0 && (
+                <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-blue-600 text-white font-bold">
+                  {pendingCourtChanges.length}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* SUB-TAB 1: JUDICIAL REGISTRY */}
+          {judgeSubTab === 'registry' && (
+            <div className="space-y-4">
+              <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111928]">
+                <table className="premium-table w-full">
+                  <thead>
+                    <tr>
+                      <th>Judicial Officer</th>
+                      <th>Designation & Court Level</th>
+                      <th>Jurisdiction / District</th>
+                      <th>Courtroom Hall</th>
+                      <th>Experience</th>
+                      <th>Bench Availability</th>
+                      <th>Active Status</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(judgeRecords.length > 0 ? judgeRecords : judges).map((j, idx) => {
+                      const judgeName = j.name || j.userId?.name || 'Judicial Officer';
+                      const judgeEmail = j.email || j.userId?.email || 'judge@judiciary.gov.in';
+                      const designation = j.designation || (j.courtLevel ? `${j.courtLevel} Judge` : 'District Judge');
+                      const courtLevel = j.courtLevel || 'District Court';
+                      const district = j.district || 'Coimbatore';
+                      const state = j.state || 'Tamil Nadu';
+                      const courtroom = j.courtroom || 'Courtroom Hall 1';
+                      const exp = j.experienceYears || j.experience || 12;
+                      const status = j.status || (j.isActive === false ? 'Inactive' : 'Active');
+                      const availability = j.availability || 'Available';
+
+                      return (
+                        <tr key={j._id || idx}>
+                          <td>
+                            <div className="flex items-center gap-3">
+                              <div className="h-9 w-9 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-300 flex items-center justify-center font-bold text-sm">
+                                ⚖️
+                              </div>
+                              <div>
+                                <p className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                                  Hon. Justice {judgeName}
+                                </p>
+                                <p className="text-[11px] text-slate-400">{judgeEmail}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <div className="space-y-0.5">
+                              <span className="font-semibold text-xs text-purple-700 dark:text-purple-300">
+                                {designation}
+                              </span>
+                              <p className="text-[10px] text-slate-400">{courtLevel}</p>
+                            </div>
+                          </td>
+                          <td>
+                            <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                              <MapPin size={12} className="text-purple-500 shrink-0" />
+                              <span>{district}, {state}</span>
+                            </div>
+                          </td>
+                          <td className="text-xs font-mono text-slate-600 dark:text-slate-300">
+                            {courtroom}
+                          </td>
+                          <td className="text-xs text-slate-600 dark:text-slate-400 font-medium">
+                            {exp} Years Bench
+                          </td>
+                          <td>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              availability === 'Available'
+                                ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400'
+                                : availability === 'Busy'
+                                ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                            }`}>
+                              {availability}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              status === 'Active'
+                                ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-400'
+                                : 'bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400'
+                            }`}>
+                              {status}
+                            </span>
+                          </td>
+                          <td>
+                            <button
+                              onClick={() => {
+                                setSelectedJudgeId(j._id || (j.userId?._id));
+                                setSelectedCourtroom(courtroom);
+                                setJudgeSubTab('awaiting');
+                              }}
+                              className="btn-secondary text-[11px] py-1.5 px-3 rounded-lg flex items-center gap-1.5 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-900/60 hover:bg-purple-50 dark:hover:bg-purple-950/40"
+                              title="Allocate this Judge to pending dockets"
+                            >
+                              <Scale size={12} /> Allocate Docket
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* SUB-TAB 2: CASES AWAITING JUDGE ALLOCATION */}
+          {judgeSubTab === 'awaiting' && (
+            <div className="space-y-4">
+              <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111928]">
+                <table className="premium-table w-full">
+                  <thead>
+                    <tr>
+                      <th>Docket ID</th>
+                      <th>Case Title & Category</th>
+                      <th>Applicant / Client</th>
+                      <th>Registered District & State</th>
+                      <th>Proposed Court & Tier</th>
+                      <th>Priority</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cases
+                      .filter(c => c.judge === 'Unassigned' || !c.assignedJudge)
+                      .map((c) => (
+                        <tr key={c.id}>
+                          <td className="font-mono font-bold text-xs text-purple-600 dark:text-purple-400">
+                            {c.id}
+                          </td>
+                          <td>
+                            <p className="font-bold text-xs text-slate-800 dark:text-slate-200">{c.title}</p>
+                            <p className="text-[10px] text-slate-400">{c.type}</p>
+                          </td>
+                          <td>
+                            <p className="text-xs font-medium text-slate-700 dark:text-slate-300">{c.applicant}</p>
+                          </td>
+                          <td>
+                            <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                              <MapPin size={12} className="text-slate-400 shrink-0" />
+                              <span>{c.district || 'Coimbatore'}, Tamil Nadu</span>
+                            </div>
+                          </td>
+                          <td>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900/40">
+                              {c.tier || 'District Court'}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              c.priority === 'High' || c.priority === 'Critical'
+                                ? 'bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                            }`}>
+                              {c.priority}
+                            </span>
+                          </td>
+                          <td>
+                            <button
+                              onClick={() => {
+                                setAssignJudgeModalCase(c);
+                                setSelectedJudgeId(c.assignedJudge?._id || '');
+                                setSelectedCourtroom(c.courtroom || 'Courtroom Hall 1');
+                                setAssignJudgeNotes('');
+                                setReassignmentReason('');
+                              }}
+                              className="btn-primary bg-purple-600 hover:bg-purple-700 text-[11px] py-1.5 px-3 rounded-lg font-bold flex items-center gap-1.5 shadow-sm"
+                            >
+                              <Scale size={12} /> Assign Presiding Judge
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    {cases.filter(c => c.judge === 'Unassigned' || !c.assignedJudge).length === 0 && (
+                      <tr>
+                        <td colSpan="7" className="text-center py-8 text-xs text-slate-400">
+                          🎉 All active dockets currently have designated presiding judges.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* SUB-TAB 3: COURT ELEVATION REQUESTS */}
+          {judgeSubTab === 'elevation-requests' && (
+            <div className="space-y-4">
+              <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111928]">
+                <table className="premium-table w-full">
+                  <thead>
+                    <tr>
+                      <th>Docket ID</th>
+                      <th>Case Title</th>
+                      <th>Current Court Jurisdiction</th>
+                      <th>Requested Higher Tier & Court</th>
+                      <th>Justification / Grounds</th>
+                      <th>Requested Date</th>
+                      <th>Status</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pendingCourtChanges.map((req) => (
+                      <tr key={req._id}>
+                        <td className="font-mono font-bold text-xs text-purple-600 dark:text-purple-400">
+                          {req.caseId || req._id}
+                        </td>
+                        <td>
+                          <p className="font-bold text-xs text-slate-800 dark:text-slate-200">{req.caseTitle}</p>
+                          <p className="text-[10px] text-slate-400">{req.caseType}</p>
+                        </td>
+                        <td>
+                          <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                            {req.courtDetails?.courtName || 'District Court, Coimbatore'}
+                          </p>
+                          <p className="text-[10px] text-slate-400">
+                            {req.courtDetails?.courtTier || 'District Court'} · {req.courtDetails?.district || 'Coimbatore'}
+                          </p>
+                        </td>
+                        <td>
+                          <div className="space-y-0.5">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                              {req.courtChangeRequest?.requestedTier}
+                            </span>
+                            <p className="text-[11px] font-medium text-slate-700 dark:text-slate-300 mt-1">
+                              {req.courtChangeRequest?.requestedCourt}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="max-w-xs">
+                          <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 italic">
+                            "{req.courtChangeRequest?.reason || 'Elevation requested under legal grounds.'}"
+                          </p>
+                        </td>
+                        <td className="text-xs text-slate-500 whitespace-nowrap">
+                          {req.courtChangeRequest?.requestedAt
+                            ? new Date(req.courtChangeRequest.requestedAt).toLocaleDateString()
+                            : new Date(req.createdAt).toLocaleDateString()}
+                        </td>
+                        <td>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                            Pending Review
+                          </span>
+                        </td>
+                        <td>
+                          <button
+                            onClick={() => {
+                              setReviewCourtChangeModal(req);
+                              setCourtChangeDecision({ status: 'Approved', remarks: '' });
+                            }}
+                            className="btn-primary bg-blue-600 hover:bg-blue-700 text-[11px] py-1.5 px-3 rounded-lg font-bold flex items-center gap-1.5 shadow-sm"
+                          >
+                            <Building size={12} /> Review & Decide
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {pendingCourtChanges.length === 0 && (
+                      <tr>
+                        <td colSpan="8" className="text-center py-8 text-xs text-slate-400">
+                          ✨ No pending court elevation requests. All dockets are operating within sanctioned jurisdictions.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── 4. CASES TAB ── */}
       {activeTab === 'cases' && (
         <div className="space-y-6">
@@ -811,32 +1425,56 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
               <tbody>
                 {cases.map((c) => (
                   <tr key={c.id}>
-                    <td><span className="font-mono text-xs">{c.id}</span></td>
-                    <td className="font-bold">{c.title}</td>
-                    <td>{c.type}</td>
-                    <td>{c.judge}</td>
-                    <td className="font-semibold text-blue-600 dark:text-blue-400">{c.lawyer}</td>
+                    <td>
+                      <span className="font-mono text-xs font-bold">{c.id}</span>
+                      {c.tier && (
+                        <span className="block text-[9px] text-purple-600 dark:text-purple-400 font-bold mt-0.5">
+                          {c.tier}
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      <p className="font-bold text-slate-800 dark:text-white">{c.title}</p>
+                      {c.district && (
+                        <span className="text-[10px] text-slate-400 font-normal">
+                          📍 {c.district}
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      <span className="badge badge-slate text-[10px]">{c.type}</span>
+                    </td>
+                    <td>
+                      <span className={`font-semibold text-xs ${c.judge === 'Unassigned' ? 'text-amber-500' : 'text-purple-700 dark:text-purple-300'}`}>
+                        {c.judge}
+                      </span>
+                    </td>
+                    <td className="font-semibold text-blue-600 dark:text-blue-400 text-xs">{c.lawyer}</td>
                     <td>{c.courtroom}</td>
                     <td>{c.nextHearing}</td>
                     <td>
                       <div className="inline-flex gap-2">
                         <button
                           onClick={() => {
-                            const judge = prompt('Assign Presiding Judge:');
-                            if (judge) setCases(cases.map(item => item.id === c.id ? { ...item, judge: `Justice ${judge}` } : item));
+                            setAssignJudgeModalCase(c);
+                            setSelectedJudgeId(c.assignedJudge?._id || '');
+                            setSelectedCourtroom(c.courtroom || 'Courtroom Hall 1');
+                            setAssignJudgeNotes('');
                           }}
-                          className="p-1 rounded bg-slate-100 text-xs text-slate-700 hover:bg-slate-250"
+                          className="px-2.5 py-1.5 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-800 dark:bg-purple-950/60 dark:hover:bg-purple-900 dark:text-purple-300 text-xs font-bold transition flex items-center gap-1 shadow-sm"
+                          title="Assign Presiding Judge"
                         >
-                          Assign Judge
+                          <Scale size={12} /> Assign Judge
                         </button>
                         <button
                           onClick={() => {
-                            const lawyer = prompt('Assign Representing Advocate:');
-                            if (lawyer) setCases(cases.map(item => item.id === c.id ? { ...item, lawyer: `Adv. ${lawyer}` } : item));
+                            setAssignLawyerModalCase(c);
+                            setSelectedLawyerId(c.assignedLawyer?._id || '');
                           }}
-                          className="p-1 rounded bg-slate-100 text-xs text-slate-700 hover:bg-slate-250"
+                          className="px-2.5 py-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-800 dark:bg-blue-950/60 dark:hover:bg-blue-900 dark:text-blue-300 text-xs font-bold transition flex items-center gap-1 shadow-sm"
+                          title="Assign Representing Advocate"
                         >
-                          Assign Lawyer
+                          <UserPlus size={12} /> Assign Lawyer
                         </button>
                       </div>
                     </td>
@@ -906,140 +1544,120 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
       )}
 
       {/* ── 6. LEGAL AID (APPLICATIONS) TAB ── */}
-      {activeTab === 'applications' && (
-        <div className="space-y-6">
-          <div>
-            <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'var(--font-display)' }}>
-              Legal Aid Applications Verification Desk
-            </h3>
-            <p className="text-xs text-slate-400">Validate applicant income certificates and approve counsel allocations.</p>
-          </div>
+      {activeTab === 'applications' && (() => {
+        const pendingCount = applications.filter(a => a.verification === 'Pending').length;
+        const verifiedCount = applications.filter(a => a.verification === 'Verified').length;
+        const rejectedCount = applications.filter(a => a.verification === 'Rejected').length;
 
-          <div className="overflow-x-auto">
-            <table className="premium-table">
-              <thead>
-                <tr>
-                  <th>App ID</th>
-                  <th>Applicant Name</th>
-                  <th>Reported Income</th>
-                  <th>Occupation</th>
-                  <th>Specialization Category</th>
-                  <th>Attachment proof</th>
-                  <th>Status</th>
-                  <th className="text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {applications.map((app) => (
-                  <tr key={app.id}>
-                    <td><span className="font-mono text-xs">{app.id}</span></td>
-                    <td className="font-bold">{app.applicant}</td>
-                    <td>{app.income}</td>
-                    <td>{app.occupation}</td>
-                    <td>{app.caseType}</td>
-                    <td className="font-semibold text-blue-600 dark:text-blue-400">
-                      <button onClick={() => alert(`Opening document preview for file: ${app.document}`)} className="hover:underline flex items-center gap-1.5 text-xs font-bold">
-                        <FileText size={12} /> {app.document}
-                      </button>
-                    </td>
-                    <td>
-                      <span className={`badge ${
-                        app.verification === 'Verified' ? 'badge-green' :
-                        app.verification === 'Rejected' ? 'badge-red' : 'badge-amber'
-                      }`}>
-                        {app.verification}
-                      </span>
-                    </td>
-                    <td className="text-right">
-                      <div className="inline-flex gap-2">
-                        {app.verification === 'Pending' ? (
-                          <>
-                            <button onClick={() => handleApproveAid(app.id)} className="p-1 rounded bg-emerald-50 text-emerald-600 text-xs hover:bg-emerald-100 font-bold">Approve</button>
-                            <button onClick={() => handleRejectAid(app.id)} className="p-1 rounded bg-rose-50 text-rose-600 text-xs hover:bg-rose-100 font-bold">Reject</button>
-                          </>
-                        ) : (
-                          <button onClick={() => alert('Application already verified.')} disabled className="p-1 text-slate-400 text-xs">Complete</button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+        return (
+          <div className="space-y-4">
+            {/* Top Compact Hero Banner */}
+            <div className="bg-[#202A3B] text-white rounded-xl border border-[#B69B72]/30 px-3.5 sm:px-4 py-2.5 sm:py-3 shadow-md relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-48 h-48 bg-radial from-[#B69B72]/15 to-transparent pointer-events-none" />
+              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-[#B69B72]/20 text-[#D9C7A5] flex items-center justify-center shrink-0">
+                    <ShieldAlert size={13} />
+                  </div>
+                  <h2 className="text-sm sm:text-base font-extrabold text-white tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
+                    Legal Aid Applications Verification Desk
+                  </h2>
+                  <span className="text-[9px] font-bold text-[#D9C7A5] bg-white/10 px-2 py-0.5 rounded-full border border-[#B69B72]/30">
+                    Article 39A Oversight
+                  </span>
+                </div>
 
-      {/* ── 7. AI ASSISTANT TAB ── */}
-      {activeTab === 'ai-recommend' && (
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-6">
-            <div>
-              <h3 className="text-lg font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'var(--font-display)' }}>
-                Centralized AI Recommendation & Matching Analytics
-              </h3>
-              <p className="text-xs text-slate-400">Configure weighting values for matching algorithm and view stats logs.</p>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-3 text-xs">
-              <div className="p-4 border rounded-2xl bg-slate-50 dark:bg-slate-900/50 space-y-1">
-                <p className="text-slate-400 font-bold uppercase text-[9px]">Average Match Score</p>
-                <p className="text-2xl font-black text-slate-800 dark:text-white">{aiMatchStats.avgMatchScore}% Accuracy</p>
-              </div>
-              
-              <div className="p-4 border rounded-2xl bg-slate-50 dark:bg-slate-900/50 space-y-1">
-                <p className="text-slate-400 font-bold uppercase text-[9px]">Most Recommended Lawyer</p>
-                <p className="text-2xl font-black text-[#2563eb]">{aiMatchStats.mostRecommendedLawyer}</p>
-              </div>
-
-              <div className="p-4 border rounded-2xl bg-slate-50 dark:bg-slate-900/50 space-y-1">
-                <p className="text-slate-400 font-bold uppercase text-[9px]">Calculations Executed Today</p>
-                <p className="text-2xl font-black text-slate-800 dark:text-white">{aiMatchStats.totalRecommendationsToday} Matches</p>
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                  <div className="flex items-center gap-1 text-[11px] bg-white/5 border border-white/10 rounded-lg px-2 py-1">
+                    <span className="text-white/60">Total:</span>
+                    <span className="font-bold text-white font-mono">{applications.length}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-[11px] bg-white/5 border border-white/10 rounded-lg px-2 py-1">
+                    <span className="text-white/60">Pending:</span>
+                    <span className="font-bold text-[#D9C7A5] font-mono">{pendingCount}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-[11px] bg-[#EDE9FE]/10 border border-[#DDD6FE]/20 rounded-lg px-2 py-1">
+                    <span className="text-[#EDE9FE]/75">Verified:</span>
+                    <span className="font-bold text-[#EDE9FE] font-mono">{verifiedCount}</span>
+                  </div>
+                  {rejectedCount > 0 && (
+                    <div className="flex items-center gap-1 text-[11px] bg-rose-500/10 border border-rose-500/20 rounded-lg px-2 py-1">
+                      <span className="text-rose-400">Rejected:</span>
+                      <span className="font-bold text-rose-300 font-mono">{rejectedCount}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Weights config */}
-            <div className="p-5 border border-slate-150 rounded-2xl space-y-4">
-              <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider">Algorithmic Match Weight Settings</h4>
-              <div className="grid gap-4 sm:grid-cols-3 text-xs">
-                <div>
-                  <label className="block font-bold text-slate-500 mb-1.5">Advocate Experience (Years) Weight</label>
-                  <input
-                    type="number"
-                    value={aiSettings.experienceWeight}
-                    onChange={e => setAiSettings({ ...aiSettings, experienceWeight: Number(e.target.value) })}
-                    className="form-input"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-500 mb-1.5">Advocate Success (Win rate) Weight</label>
-                  <input
-                    type="number"
-                    value={aiSettings.successRateWeight}
-                    onChange={e => setAiSettings({ ...aiSettings, successRateWeight: Number(e.target.value) })}
-                    className="form-input"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-500 mb-1.5">Distance Location Index Weight</label>
-                  <input
-                    type="number"
-                    value={aiSettings.distanceWeight}
-                    onChange={e => setAiSettings({ ...aiSettings, distanceWeight: Number(e.target.value) })}
-                    className="form-input"
-                  />
-                </div>
+            {/* Table Container */}
+            <div className="bg-white dark:bg-[#1B2332] rounded-xl border border-slate-200/90 dark:border-slate-800 shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="premium-table">
+                  <thead>
+                    <tr>
+                      <th>App ID</th>
+                      <th>Applicant Name</th>
+                      <th>Reported Income</th>
+                      <th>Occupation</th>
+                      <th>Specialization Category</th>
+                      <th>Attachment proof</th>
+                      <th>Status</th>
+                      <th className="text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {applications.map((app) => (
+                      <tr key={app.id}>
+                        <td>
+                          <span className="font-mono text-xs font-bold bg-[#FAF9F5] dark:bg-[#202A3B]/60 px-2 py-0.5 rounded border border-[#202A3B]/10 dark:border-white/10">
+                            {app.id}
+                          </span>
+                        </td>
+                        <td className="font-bold text-[#202A3B] dark:text-white">{app.applicant}</td>
+                        <td className="text-xs font-mono">{app.income}</td>
+                        <td className="text-xs text-slate-600 dark:text-slate-300">{app.occupation}</td>
+                        <td>
+                          <span className="text-xs font-semibold text-[#B69B72]">{app.caseType}</span>
+                        </td>
+                        <td className="font-semibold text-[#B69B72]">
+                          <button onClick={() => alert(`Opening document preview for file: ${app.document}`)} className="hover:underline flex items-center gap-1.5 text-xs font-bold">
+                            <FileText size={12} /> {app.document}
+                          </button>
+                        </td>
+                        <td>
+                          <span className={`badge ${
+                            app.verification === 'Verified' ? 'badge-green' :
+                            app.verification === 'Rejected' ? 'badge-red' : 'badge-amber'
+                          }`}>
+                            {app.verification}
+                          </span>
+                        </td>
+                        <td className="text-right">
+                          <div className="inline-flex gap-1.5">
+                            {app.verification === 'Pending' ? (
+                              <>
+                                <button onClick={() => handleApproveAid(app.id)} className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-bold shadow-xs transition">
+                                  Approve
+                                </button>
+                                <button onClick={() => handleRejectAid(app.id)} className="px-2.5 py-1 rounded-lg bg-rose-600 text-white hover:bg-rose-700 text-xs font-bold shadow-xs transition">
+                                  Reject
+                                </button>
+                              </>
+                            ) : (
+                              <span className="text-slate-400 text-xs italic px-2">Processed</span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-              <button
-                onClick={() => alert('Matching weight matrices updated in MongoDB parameters.')}
-                className="btn-primary text-xs py-2 px-5 rounded-xl font-bold"
-              >
-                Save Weight Parameters
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
 
 
@@ -1548,6 +2166,9 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
 
       {/* ── 9. PROFILE & SECURITY TAB ── */}
       {activeTab === 'profile' && (
+        <ProfilePage />
+      )}
+      {false && (
         <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col md:flex-row h-auto min-h-[500px]">
           
           <div className="w-full md:w-56 shrink-0 border-r bg-slate-50/50 dark:bg-slate-900/30 p-4 space-y-1">
@@ -1691,6 +2312,13 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
         </div>
       )}
 
+      {/* ── COMMUNICATIONS / MESSAGES TAB ── */}
+      {activeTab === 'messages' && (
+        <div className="space-y-4">
+          <ChatCenter />
+        </div>
+      )}
+
       {/* ── 10. CREATE USER ACCOUNT MODAL ── */}
       {showCreateUserModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
@@ -1809,9 +2437,17 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
                     onChange={e => setHearingForm({ ...hearingForm, judge: e.target.value })}
                     className="form-input"
                   >
-                    <option>Justice Shanmugam</option>
-                    <option>Justice Meera Rajan</option>
-                    <option>Justice Dilan Perera</option>
+                    {judges.length > 0 ? (
+                      judges.map(j => (
+                        <option key={j._id} value={`Justice ${j.name}`}>Justice {j.name}</option>
+                      ))
+                    ) : (
+                      <>
+                        <option>Justice Shanmugam</option>
+                        <option>Justice Meera Rajan</option>
+                        <option>Justice Amarasinghe</option>
+                      </>
+                    )}
                   </select>
                 </div>
               </div>
@@ -1819,6 +2455,594 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
               <button type="submit" className="w-full btn-primary text-xs py-2.5 rounded-xl font-bold justify-center shadow-md">
                 Schedule Hearing Slot
               </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── 12. ASSIGN PRESIDING JUDGE MODAL ── */}
+      {assignJudgeModalCase && (() => {
+        const isReassign = assignJudgeModalCase.assignedJudge || (assignJudgeModalCase.judge && assignJudgeModalCase.judge !== 'Unassigned');
+        const judgeHistory = assignJudgeModalCase.raw?.judgeHistory || [];
+        const caseTier = assignJudgeModalCase.tier || 'District Court';
+
+        return (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-lg w-full space-y-4 shadow-2xl relative animate-fade-in max-h-[90vh] overflow-y-auto">
+              <button
+                onClick={() => {
+                  setAssignJudgeModalCase(null);
+                  setReassignmentReason('');
+                }}
+                className="absolute right-5 top-5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xl font-bold"
+              >
+                ×
+              </button>
+
+              <div className="flex items-center gap-3">
+                <span className="p-2.5 rounded-2xl bg-purple-100 dark:bg-purple-950/70 text-purple-600 dark:text-purple-300">
+                  <Gavel size={22} />
+                </span>
+                <div>
+                  <h4 className="text-base font-bold text-slate-900 dark:text-white">
+                    {isReassign ? 'Reassign Presiding Judicial Officer' : 'Assign Presiding Judicial Officer'}
+                  </h4>
+                  <p className="text-xs text-slate-400">Bench designation for docket <span className="font-mono font-bold text-purple-600 dark:text-purple-400">{assignJudgeModalCase.id}</span></p>
+                </div>
+              </div>
+
+              {/* Case Overview Card */}
+              <div className="p-3.5 bg-purple-50/70 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/50 rounded-2xl text-xs space-y-1.5">
+                <p className="font-bold text-slate-800 dark:text-slate-200 text-sm">{assignJudgeModalCase.title}</p>
+                <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                  <p>Category: <strong className="text-slate-700 dark:text-slate-300">{assignJudgeModalCase.type}</strong></p>
+                  <p>Jurisdiction Tier: <strong className="text-purple-700 dark:text-purple-300">{caseTier}</strong></p>
+                  <p>District: <strong className="text-slate-700 dark:text-slate-300">{assignJudgeModalCase.district || 'Coimbatore'}</strong></p>
+                  <p>Current Presiding Bench: <strong className="text-purple-700 dark:text-purple-400">{assignJudgeModalCase.judge}</strong></p>
+                </div>
+              </div>
+
+              {/* Reassignment Warning */}
+              {isReassign && (
+                <div className="p-3 bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-2xl text-xs text-amber-800 dark:text-amber-300 space-y-1">
+                  <p className="font-bold flex items-center gap-1.5 text-[11px]">
+                    <AlertCircle size={14} className="text-amber-600" /> Judicial Reassignment Notice
+                  </p>
+                  <p className="text-[10px] leading-relaxed">
+                    This docket is currently presided by <strong>{assignJudgeModalCase.judge}</strong>. Reassigning will record a permanent audit entry and immediately dispatch notifications and emails to the user and counsel.
+                  </p>
+                </div>
+              )}
+
+              {/* Previous Judge Assignment History */}
+              {judgeHistory.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                    <Clock size={12} /> Previous Bench Assignment History ({judgeHistory.length})
+                  </p>
+                  <div className="max-h-28 overflow-y-auto space-y-1.5 pr-1 border border-slate-100 dark:border-slate-800 rounded-xl p-2 bg-slate-50/50 dark:bg-slate-900/50">
+                    {judgeHistory.map((h, i) => (
+                      <div key={i} className="text-[11px] flex flex-col gap-0.5 border-b border-slate-200/50 dark:border-slate-800/50 pb-1 last:border-0 last:pb-0">
+                        <div className="flex justify-between items-center font-semibold">
+                          <span className="text-purple-700 dark:text-purple-300">{h.judgeName || 'Hon. Justice'}</span>
+                          <span className="text-[10px] text-slate-400">{new Date(h.assignedAt || h.date).toLocaleDateString()}</span>
+                        </div>
+                        {h.reason && <p className="text-[10px] text-slate-500 italic">Reason: {h.reason}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <form onSubmit={handleAssignJudgeSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    Select Presiding Judge *
+                  </label>
+                  <select
+                    value={selectedJudgeId}
+                    onChange={(e) => setSelectedJudgeId(e.target.value)}
+                    className="form-input w-full font-medium"
+                    required
+                  >
+                    <option value="">-- Choose Judicial Officer --</option>
+                    {(judgeRecords.length > 0 ? judgeRecords : judges).map((j) => {
+                      const jId = j._id || j.userId?._id || j.id;
+                      const jName = j.name || j.userId?.name;
+                      const jTier = j.courtLevel || 'District Court';
+                      const jDesignation = j.designation || `${jTier} Judge`;
+                      const jDistrict = j.district || '';
+                      const isIncompatible = caseTier === 'Supreme Court' && jTier === 'District Court';
+
+                      return (
+                        <option key={jId} value={jId} disabled={isIncompatible}>
+                          Hon. Justice {jName} · {jDesignation} ({jTier}{jDistrict ? `, ${jDistrict}` : ''}){isIncompatible ? ' [INCOMPATIBLE: District Judge cannot preside Supreme Court]' : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                {isReassign && (
+                  <div>
+                    <label className="block text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-1.5">
+                      Mandatory Reason for Reassignment *
+                    </label>
+                    <textarea
+                      value={reassignmentReason}
+                      onChange={(e) => setReassignmentReason(e.target.value)}
+                      required
+                      rows={2}
+                      className="form-input w-full resize-none text-xs border-amber-300 dark:border-amber-700/60"
+                      placeholder="e.g. Judicial recusal under Section 479, annual bench rotation roster, leave of absence, or administrative transfer..."
+                    />
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                      Courtroom Hall / Bench
+                    </label>
+                    <input
+                      value={selectedCourtroom}
+                      onChange={(e) => setSelectedCourtroom(e.target.value)}
+                      className="form-input"
+                      placeholder="e.g. Courtroom Hall 3"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                      Court Tier
+                    </label>
+                    <input
+                      value={caseTier}
+                      disabled
+                      className="form-input bg-slate-100 dark:bg-slate-900 opacity-80 cursor-not-allowed"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    Administrative Assignment Notes & Bench Directives
+                  </label>
+                  <textarea
+                    value={assignJudgeNotes}
+                    onChange={(e) => setAssignJudgeNotes(e.target.value)}
+                    rows={2}
+                    className="form-input w-full resize-none text-xs"
+                    placeholder="e.g. Assigned for preliminary dispute hearing & evidence verification..."
+                  />
+                </div>
+
+                {/* Real-time notification guarantee alert */}
+                <div className="p-3 bg-blue-50/80 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/60 rounded-2xl text-xs text-blue-700 dark:text-blue-300 space-y-1">
+                  <p className="font-bold flex items-center gap-1.5 text-[11px]">
+                    <span>⚡</span> Automated Notifications Dispatched
+                  </p>
+                  <p className="text-[10px] leading-relaxed">
+                    Formal notifications and real-time emails will be dispatched to both the <strong>Citizen (User)</strong> and the <strong>Representing Advocate (Lawyer)</strong> containing the Case ID, previous bench, new judge designation, courtroom, and full assignment history.
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAssignJudgeModalCase(null);
+                      setReassignmentReason('');
+                    }}
+                    className="btn-secondary text-xs py-2 px-4 rounded-xl"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isAssigningJudge}
+                    className="btn-primary bg-purple-600 hover:bg-purple-700 text-xs py-2 px-5 rounded-xl font-bold flex items-center gap-1.5 shadow-md shadow-purple-600/20"
+                  >
+                    <Gavel size={14} />
+                    {isAssigningJudge ? 'Dispatching Assignment...' : (isReassign ? 'Confirm Reassignment' : 'Confirm Bench Assignment')}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── 13. ASSIGN ADVOCATE MODAL ── */}
+      {assignLawyerModalCase && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-lg w-full space-y-4 shadow-2xl relative animate-fade-in">
+            <button
+              onClick={() => setAssignLawyerModalCase(null)}
+              className="absolute right-5 top-5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xl font-bold"
+            >
+              ×
+            </button>
+
+            <div className="flex items-center gap-3">
+              <span className="p-2.5 rounded-2xl bg-blue-100 dark:bg-blue-950/70 text-blue-600 dark:text-blue-300">
+                <UserPlus size={22} />
+              </span>
+              <div>
+                <h4 className="text-base font-bold text-slate-900 dark:text-white">Assign Representing Advocate</h4>
+                <p className="text-xs text-slate-400">Allocate legal counsel to docket {assignLawyerModalCase.id}</p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl text-xs">
+              <p className="font-bold text-slate-800 dark:text-slate-200">{assignLawyerModalCase.title}</p>
+              <p className="text-slate-500 mt-0.5">Applicant: {assignLawyerModalCase.applicant} · Category: {assignLawyerModalCase.type}</p>
+            </div>
+
+            <form onSubmit={handleAssignLawyerSubmit} className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                  Select Legal Counsel *
+                </label>
+                <select
+                  value={selectedLawyerId}
+                  onChange={(e) => setSelectedLawyerId(e.target.value)}
+                  className="form-input w-full font-medium"
+                  required
+                >
+                  <option value="">-- Choose Advocate --</option>
+                  {lawyers.map((l) => (
+                    <option key={l._id || l.id} value={l._id || l.id}>
+                      {l.name} ({l.specialization} · Exp: {l.experience}y)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t">
+                <button
+                  type="button"
+                  onClick={() => setAssignLawyerModalCase(null)}
+                  className="btn-secondary text-xs py-2 px-4 rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isAssigningLawyer}
+                  className="btn-primary text-xs py-2 px-5 rounded-xl font-bold"
+                >
+                  {isAssigningLawyer ? 'Assigning...' : 'Assign Advocate'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── 14. ADD JUDICIAL OFFICER MODAL ── */}
+      {showCreateJudgeModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-xl w-full space-y-4 shadow-2xl relative animate-fade-in max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setShowCreateJudgeModal(false)}
+              className="absolute right-5 top-5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xl font-bold"
+            >
+              ×
+            </button>
+
+            <div className="flex items-center gap-3">
+              <span className="p-2.5 rounded-2xl bg-purple-100 dark:bg-purple-950/70 text-purple-600 dark:text-purple-300">
+                <Gavel size={22} />
+              </span>
+              <div>
+                <h4 className="text-base font-bold text-slate-900 dark:text-white">Add New Judicial Officer</h4>
+                <p className="text-xs text-slate-400">Register judge record, judicial rank, court level, and assigned district.</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleCreateJudgeSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    Judicial Officer Name *
+                  </label>
+                  <input
+                    value={createJudgeForm.name}
+                    onChange={(e) => setCreateJudgeForm({ ...createJudgeForm, name: e.target.value })}
+                    required
+                    placeholder="e.g. S. K. Radhakrishnan"
+                    className="form-input"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    Official Judiciary Email *
+                  </label>
+                  <input
+                    type="email"
+                    value={createJudgeForm.email}
+                    onChange={(e) => setCreateJudgeForm({ ...createJudgeForm, email: e.target.value })}
+                    required
+                    placeholder="judge@judiciary.gov.in"
+                    className="form-input"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    Phone Number
+                  </label>
+                  <input
+                    value={createJudgeForm.phone}
+                    onChange={(e) => setCreateJudgeForm({ ...createJudgeForm, phone: e.target.value })}
+                    placeholder="+91 98401 23456"
+                    className="form-input"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    Designation *
+                  </label>
+                  <select
+                    value={createJudgeForm.designation}
+                    onChange={(e) => setCreateJudgeForm({ ...createJudgeForm, designation: e.target.value })}
+                    className="form-input"
+                  >
+                    <option value="District Judge">Principal District Judge</option>
+                    <option value="Additional District Judge">Additional District Judge</option>
+                    <option value="Senior Civil Judge">Senior Civil Judge</option>
+                    <option value="Chief Judicial Magistrate">Chief Judicial Magistrate</option>
+                    <option value="High Court Judge">High Court Judge</option>
+                    <option value="Supreme Court Justice">Supreme Court Justice</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    Court Level *
+                  </label>
+                  <select
+                    value={createJudgeForm.courtLevel}
+                    onChange={(e) => setCreateJudgeForm({ ...createJudgeForm, courtLevel: e.target.value })}
+                    className="form-input"
+                  >
+                    <option value="District Court">District Court</option>
+                    <option value="High Court">High Court</option>
+                    <option value="Supreme Court">Supreme Court</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    District *
+                  </label>
+                  <input
+                    value={createJudgeForm.district}
+                    onChange={(e) => setCreateJudgeForm({ ...createJudgeForm, district: e.target.value })}
+                    required
+                    placeholder="e.g. Coimbatore"
+                    className="form-input"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    State *
+                  </label>
+                  <input
+                    value={createJudgeForm.state}
+                    onChange={(e) => setCreateJudgeForm({ ...createJudgeForm, state: e.target.value })}
+                    required
+                    placeholder="e.g. Tamil Nadu"
+                    className="form-input"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    Courtroom / Bench
+                  </label>
+                  <input
+                    value={createJudgeForm.courtroom}
+                    onChange={(e) => setCreateJudgeForm({ ...createJudgeForm, courtroom: e.target.value })}
+                    placeholder="Courtroom 1"
+                    className="form-input"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    Court Name
+                  </label>
+                  <input
+                    value={createJudgeForm.courtName}
+                    onChange={(e) => setCreateJudgeForm({ ...createJudgeForm, courtName: e.target.value })}
+                    placeholder="District Court, Coimbatore"
+                    className="form-input"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    Availability
+                  </label>
+                  <select
+                    value={createJudgeForm.availability}
+                    onChange={(e) => setCreateJudgeForm({ ...createJudgeForm, availability: e.target.value })}
+                    className="form-input"
+                  >
+                    <option value="Available">Available</option>
+                    <option value="Busy">Busy (Presiding Trials)</option>
+                    <option value="On Leave">On Leave</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    Status
+                  </label>
+                  <select
+                    value={createJudgeForm.status}
+                    onChange={(e) => setCreateJudgeForm({ ...createJudgeForm, status: e.target.value })}
+                    className="form-input"
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Retired">Retired</option>
+                    <option value="Suspended">Suspended</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateJudgeModal(false)}
+                  className="btn-secondary text-xs py-2 px-4 rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary bg-purple-600 hover:bg-purple-700 text-xs py-2 px-5 rounded-xl font-bold flex items-center gap-1.5 shadow-md shadow-purple-600/20"
+                >
+                  <Plus size={14} /> Register Judicial Officer
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── 15. REVIEW COURT ELEVATION REQUEST MODAL ── */}
+      {reviewCourtChangeModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-lg w-full space-y-4 shadow-2xl relative animate-fade-in">
+            <button
+              onClick={() => setReviewCourtChangeModal(null)}
+              className="absolute right-5 top-5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xl font-bold"
+            >
+              ×
+            </button>
+
+            <div className="flex items-center gap-3">
+              <span className="p-2.5 rounded-2xl bg-blue-100 dark:bg-blue-950/70 text-blue-600 dark:text-blue-300">
+                <Building size={22} />
+              </span>
+              <div>
+                <h4 className="text-base font-bold text-slate-900 dark:text-white">Review Court Elevation Request</h4>
+                <p className="text-xs text-slate-400">Jurisdictional transfer evaluation for docket <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{reviewCourtChangeModal.caseId || reviewCourtChangeModal._id}</span></p>
+              </div>
+            </div>
+
+            {/* Case & Court Transition Card */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs space-y-3">
+              <div>
+                <p className="font-bold text-slate-800 dark:text-slate-200 text-sm">{reviewCourtChangeModal.caseTitle}</p>
+                <p className="text-[11px] text-slate-500">Category: {reviewCourtChangeModal.caseType} · Client: {reviewCourtChangeModal.applicant?.name || 'Applicant'}</p>
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-[#111928] border border-slate-200 dark:border-slate-800">
+                <div>
+                  <p className="text-[10px] uppercase font-bold text-slate-400">Current Court</p>
+                  <p className="font-semibold text-xs text-slate-700 dark:text-slate-300 mt-0.5">
+                    {reviewCourtChangeModal.courtDetails?.courtTier || 'District Court'}
+                  </p>
+                  <p className="text-[10px] text-slate-400">{reviewCourtChangeModal.courtDetails?.courtName}</p>
+                </div>
+                <ArrowRight size={18} className="text-purple-600 dark:text-purple-400 shrink-0 mx-2" />
+                <div className="text-right">
+                  <p className="text-[10px] uppercase font-bold text-purple-600 dark:text-purple-400">Requested Elevation</p>
+                  <p className="font-bold text-xs text-purple-700 dark:text-purple-300 mt-0.5">
+                    {reviewCourtChangeModal.courtChangeRequest?.requestedTier}
+                  </p>
+                  <p className="text-[10px] text-slate-400">{reviewCourtChangeModal.courtChangeRequest?.requestedCourt}</p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                  Applicant Justification & Legal Grounds:
+                </p>
+                <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/40 text-xs text-purple-900 dark:text-purple-200 italic leading-relaxed">
+                  "{reviewCourtChangeModal.courtChangeRequest?.reason || 'Elevation sought under applicable legal procedures.'}"
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={handleReviewCourtChangeSubmit} className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                  Administrative Decision *
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className={`p-3 rounded-2xl border cursor-pointer flex items-center gap-2.5 text-xs font-bold transition-all ${
+                    courtChangeDecision.status === 'Approved'
+                      ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 ring-2 ring-emerald-500/20'
+                      : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="decision"
+                      checked={courtChangeDecision.status === 'Approved'}
+                      onChange={() => setCourtChangeDecision({ ...courtChangeDecision, status: 'Approved' })}
+                      className="hidden"
+                    />
+                    <CheckCircle2 size={16} className={courtChangeDecision.status === 'Approved' ? 'text-emerald-600' : 'text-slate-400'} />
+                    Approve Court Elevation
+                  </label>
+
+                  <label className={`p-3 rounded-2xl border cursor-pointer flex items-center gap-2.5 text-xs font-bold transition-all ${
+                    courtChangeDecision.status === 'Rejected'
+                      ? 'border-red-500 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 ring-2 ring-red-500/20'
+                      : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="decision"
+                      checked={courtChangeDecision.status === 'Rejected'}
+                      onChange={() => setCourtChangeDecision({ ...courtChangeDecision, status: 'Rejected' })}
+                      className="hidden"
+                    />
+                    <XCircle size={16} className={courtChangeDecision.status === 'Rejected' ? 'text-red-600' : 'text-slate-400'} />
+                    Reject Elevation Request
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                  Administrative Review Remarks & Legal Notes
+                </label>
+                <textarea
+                  value={courtChangeDecision.remarks}
+                  onChange={(e) => setCourtChangeDecision({ ...courtChangeDecision, remarks: e.target.value })}
+                  rows={2}
+                  className="form-input w-full resize-none text-xs"
+                  placeholder="e.g. Approved under appellate jurisdiction Article 226. Case files scheduled for High Court Registry transmission..."
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t">
+                <button
+                  type="button"
+                  onClick={() => setReviewCourtChangeModal(null)}
+                  className="btn-secondary text-xs py-2 px-4 rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingCourtChange}
+                  className={`btn-primary text-xs py-2 px-5 rounded-xl font-bold flex items-center gap-1.5 ${
+                    courtChangeDecision.status === 'Approved'
+                      ? 'bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-600/20'
+                      : 'bg-red-600 hover:bg-red-700 shadow-md shadow-red-600/20'
+                  }`}
+                >
+                  {isSubmittingCourtChange ? 'Recording Decision...' : `Confirm Decision (${courtChangeDecision.status})`}
+                </button>
+              </div>
             </form>
           </div>
         </div>

@@ -1,8 +1,19 @@
 const authorizeRoles = (...allowedRoles) => {
   return (req, res, next) => {
-    if (!req.user || !allowedRoles.includes(req.user.role)) {
+    if (!req.user) {
+      res.status(401);
+      return next(new Error('Not authorized: user context missing'));
+    }
+    const role = req.user.role;
+    // Map User and Applicant interchangeably
+    const effectiveRoles = (role === 'User' || role === 'Applicant') 
+      ? ['User', 'Applicant'] 
+      : [role];
+      
+    const isAllowed = allowedRoles.some(r => effectiveRoles.includes(r));
+    if (!isAllowed) {
       res.status(403);
-      return next(new Error('Forbidden: insufficient privileges'));
+      return next(new Error(`Forbidden: insufficient privileges for role '${role}'`));
     }
     next();
   };

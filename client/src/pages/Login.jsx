@@ -4,7 +4,7 @@ import { AuthContext } from '../contexts/AuthContext';
 import axios from '../api/axios';
 import {
   Eye, EyeOff, Scale, Crown, User, ArrowRight,
-  CheckCircle, Shield, Sparkles, Lock, Mail, AlertCircle
+  CheckCircle, Shield, Sparkles, Lock, Mail, AlertCircle, Gavel, Building
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import { motion } from 'framer-motion';
@@ -15,37 +15,81 @@ import InteractiveCanvasBackground from '../components/InteractiveCanvasBackgrou
 const ROLES = [
   {
     id: 'User',
-    label: 'Citizen',
+    label: 'Applicant',
     icon: User,
-    color: '#3B82F6',
-    grad: 'linear-gradient(135deg,#1D4ED8,#3B82F6)',
-    email: 'user@sevenseas.com',
-    desc: 'Apply for legal aid, track your case',
-    bg: 'rgba(59,130,246,0.08)',
-    border: 'rgba(59,130,246,0.25)',
+    color: '#202A3B',
+    grad: 'linear-gradient(135deg,#202A3B,#334259)',
+    email: 'applicant@test.com',
+    desc: 'Apply for legal aid, track your case & chat with counsel',
+    bg: 'rgba(32,42,59,0.08)',
+    border: 'rgba(32,42,59,0.25)',
   },
   {
     id: 'Lawyer',
     label: 'Advocate',
     icon: Scale,
-    color: '#AEA668',
-    grad: 'linear-gradient(135deg,#908852,#AEA668)',
-    email: 'lawyer@sevenseas.com',
-    desc: 'Manage hearings and client cases',
-    bg: 'rgba(174,166,104,0.08)',
-    border: 'rgba(174,166,104,0.25)',
+    color: '#B69B72',
+    grad: 'linear-gradient(135deg,#B69B72,#D9C7A5)',
+    email: 'lawyer@test.com',
+    desc: 'Manage hearings, update cases & client communication',
+    bg: 'rgba(182,155,114,0.12)',
+    border: 'rgba(182,155,114,0.35)',
+  },
+  {
+    id: 'CourtStaff',
+    label: 'Court Staff',
+    icon: Building,
+    color: '#202A3B',
+    grad: 'linear-gradient(135deg,#202A3B,#3F506B)',
+    email: 'staff@test.com',
+    desc: 'Schedule hearings, manage dockets & notify parties',
+    bg: 'rgba(32,42,59,0.08)',
+    border: 'rgba(32,42,59,0.25)',
   },
   {
     id: 'Admin',
     label: 'Admin',
     icon: Crown,
-    color: '#AEA668',
-    grad: 'linear-gradient(135deg,#908852,#AEA668)',
-    email: 'gokulrams.cs23@bitsathy.ac.in',
-    desc: 'System administration & control',
-    bg: 'rgba(174,166,104,0.08)',
-    border: 'rgba(174,166,104,0.25)',
+    color: '#B69B72',
+    grad: 'linear-gradient(135deg,#202A3B,#B69B72)',
+    email: 'admin@test.com',
+    desc: 'Assign lawyers, approve legal aid & administration',
+    bg: 'rgba(182,155,114,0.12)',
+    border: 'rgba(182,155,114,0.35)',
   },
+];
+
+export const THENI_ADVOCATE_LOGINS = [
+  { name: 'Advocate A. Sundaramurthy', email: 'lawyer17@sevenseas.com', court: 'Sub Court, Periyakulam / Theni', spec: 'Property Law & Land Partition' },
+  { name: 'Advocate S. Murugan', email: 'lawyer@sevenseas.com', court: 'District Court, Theni', spec: 'Senior Property Counsel' },
+  { name: 'Advocate K. Meenakshi Sundaram', email: 'lawyer2@sevenseas.com', court: 'Sessions Court, Theni', spec: 'Criminal Defense Counsel' },
+  { name: 'Advocate R. Kavitha', email: 'lawyer3@sevenseas.com', court: 'Family Court, Theni', spec: 'Family & Matrimonial Advocate' },
+  { name: 'Advocate P. Senthil Kumar', email: 'lawyer4@sevenseas.com', court: 'Sub Court, Periyakulam', spec: 'Civil & Contract Law' },
+  { name: 'Advocate M. Balamurugan', email: 'lawyer5@sevenseas.com', court: 'MACT Tribunal, Theni', spec: 'Motor Accident Claims (MACT)' },
+  { name: 'Advocate V. Anitha', email: 'lawyer6@sevenseas.com', court: 'Mahila Court, Theni', spec: 'Human Rights & Consumer' },
+  { name: 'Advocate T. Rajendran', email: 'lawyer7@sevenseas.com', court: 'Principal District Court, Theni', spec: 'Revenue & Agricultural Land' },
+  { name: 'Advocate S. Priya Dharshini', email: 'lawyer8@sevenseas.com', court: 'DLSA Theni', spec: 'Legal Aid & Women Rights' },
+  { name: 'Advocate G. Karuppasamy', email: 'lawyer9@sevenseas.com', court: 'CJM Court, Theni', spec: 'Criminal Trial & Sessions' },
+  { name: 'Advocate A. Mohamed Ismail', email: 'lawyer10@sevenseas.com', court: 'District Court, Theni', spec: 'Commercial & Banking' },
+  { name: 'Advocate N. Lakshmi Narayanan', email: 'lawyer11@sevenseas.com', court: 'Combined Court, Theni', spec: 'Agricultural & Revenue' },
+  { name: 'Advocate D. Jayanthi', email: 'lawyer12@sevenseas.com', court: 'District Court, Theni', spec: 'Appellate & Writs' },
+  { name: 'Advocate K. Muthuvel', email: 'lawyer13@sevenseas.com', court: 'Labour Court, Theni', spec: 'Labour & Employment' },
+  { name: 'Advocate C. Saravanan', email: 'lawyer14@sevenseas.com', court: 'Sub Court, Theni', spec: 'Property Registration' },
+  { name: 'Advocate J. Deepa Rani', email: 'lawyer15@sevenseas.com', court: 'ADR Centre, Theni', spec: 'ADR Mediation & Succession' },
+  { name: 'Advocate R. Thirunavukkarasu', email: 'lawyer16@sevenseas.com', court: 'Fast Track Court, Theni', spec: 'Sec 138 NI Act Cheque Bounce' },
+  { name: 'Advocate P. Mariselvi', email: 'lawyer18@sevenseas.com', court: 'Family Court, Theni', spec: 'Family & Matrimonial' },
+  { name: 'Advocate M. Alagarsamy', email: 'lawyer19@sevenseas.com', court: 'Sessions Court, Theni', spec: 'Criminal Law & Sessions' },
+  { name: 'Advocate S. Veerachamy', email: 'lawyer20@sevenseas.com', court: 'Combined Court, Theni', spec: 'Revenue & Water Rights' },
+  { name: 'Advocate K. Bhuvaneswari', email: 'lawyer21@sevenseas.com', court: 'Family Mediation, Theni', spec: 'ADR & Family Law' },
+  { name: 'Advocate V. Manikandan', email: 'lawyer22@sevenseas.com', court: 'Fast Track JM Court, Theni', spec: 'Sec 138 Cheque Bounce' },
+  { name: 'Advocate T. Pandiarajan', email: 'lawyer23@sevenseas.com', court: 'MACT Tribunal, Theni', spec: 'Motor Accident Claims' },
+  { name: 'Advocate N. Subbiah', email: 'lawyer24@sevenseas.com', court: 'Principal District Court, Theni', spec: 'Civil & Contract' },
+  { name: 'Advocate R. Malathi', email: 'lawyer25@sevenseas.com', court: 'Consumer Commission, Theni', spec: 'Consumer & RTI Redressal' },
+  { name: 'Advocate G. Thavasi', email: 'lawyer26@sevenseas.com', court: 'Andipatti / Theni Court', spec: 'Grama Natham & Land Law' },
+  { name: 'Advocate J. Francis Xavier', email: 'lawyer27@sevenseas.com', court: 'Bodinayakanur / Theni Court', spec: 'Commercial & Spice Traders' },
+  { name: 'Advocate D. Chidambaram', email: 'lawyer28@sevenseas.com', court: 'Judicial Magistrate, Theni', spec: 'Magistrate Criminal Defense' },
+  { name: 'Advocate M. Revathi', email: 'lawyer29@sevenseas.com', court: 'Cyber Cell, Theni', spec: 'Cyber Crime & Online Fraud' },
+  { name: 'Advocate S. Palanichamy', email: 'lawyer30@sevenseas.com', court: 'Uthamapalayam / Theni Court', spec: 'Estate & Labour Disputes' },
 ];
 
 /* SVG Scale-of-Justice illustration */
@@ -212,11 +256,7 @@ const Login = () => {
         {/* Floating backdrop canvas grid */}
         <div className="absolute inset-0 pointer-events-none opacity-20" style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.02) 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
         
-        {/* Glowing aura mesh */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[500px] rounded-full pointer-events-none opacity-40 blur-[80px]" 
-          style={{ background: `radial-gradient(circle, ${role?.color}25, transparent 65%)` }} />
-
-        {/* Animated matrix streams */}
+        {/* Matrix grid streams */}
         <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-10" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.01) 1px, transparent 1px)', backgroundSize: '100% 4px' }} />
 
         <div className="relative z-10 flex flex-col items-center text-center space-y-10 max-w-lg px-6">
@@ -268,18 +308,18 @@ const Login = () => {
             </div>
 
             {/* Central Seven Seas Logo Badge */}
-            <div className="absolute h-28 w-28 rounded-3xl flex items-center justify-center shadow-2xl bg-[#090F1C] border border-white/10 hover:border-white/20 transition-all duration-300">
-              <Logo className="h-14 w-14 text-[#AEA668]" strokeWidth={1.5} />
+            <div className="absolute h-28 w-28 rounded-3xl flex items-center justify-center shadow-2xl bg-[#1F2839] border border-white/10 hover:border-white/20 transition-all duration-300">
+              <Logo className="h-14 w-14 text-[#B69D74]" strokeWidth={1.5} />
               
               {/* Pulse circle */}
-              <div className="absolute inset-0 rounded-3xl border border-blue-500/20 animate-ping pointer-events-none" style={{ animationDuration: '3s' }} />
+              <div className="absolute inset-0 rounded-3xl border border-[#B69D74]/20 animate-ping pointer-events-none" style={{ animationDuration: '3s' }} />
             </div>
           </div>
 
           {/* Heading Credentials */}
           <div className="space-y-3 animate-fade-in-up">
             <h1 
-              className="text-4xl font-black tracking-[0.25em] uppercase font-space bg-gradient-to-r from-[#AEA668] via-[#FFFFFF] to-[#AEA668] bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(174,166,104,0.35)]"
+              className="text-4xl font-black tracking-[0.25em] uppercase font-space bg-gradient-to-r from-[#B69D74] via-[#FFFFFF] to-[#B69D74] bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(182,157,116,0.35)]"
               style={{
                 backgroundSize: '200% auto',
                 animation: 'textShimmer 3s linear infinite'
@@ -319,11 +359,7 @@ const Login = () => {
 
       {/* ── LEFT PANEL ── */}
       <div className="hidden lg:flex lg:w-[500px] shrink-0 flex-col justify-between p-8 relative overflow-hidden"
-        style={{ background: 'linear-gradient(160deg, #0A1223 0%, #0F1A30 50%, #080E1C 100%)', borderRight: '1px solid rgba(255,255,255,0.05)' }}>
-
-        {/* Animated blob bg */}
-        <div className="absolute top-0 right-0 w-80 h-80 rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, ${role?.color}12, transparent 70%)`, filter: 'blur(70px)', transition: 'background 0.5s ease' }} />
-        <div className="absolute bottom-0 left-0 w-72 h-72 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(174,166,104,0.07), transparent 70%)', filter: 'blur(60px)' }} />
+        style={{ background: 'linear-gradient(160deg, #1F2839 0%, #151C28 50%, #0E131C 100%)', borderRight: '1px solid rgba(245,245,239,0.08)' }}>
 
         {/* Archangel Raguel Left Panel Watermark */}
         <div className="absolute right-[-15%] bottom-[-5%] w-[360px] h-[360px] opacity-[0.06] pointer-events-none select-none z-0">
@@ -348,20 +384,17 @@ const Login = () => {
         {/* Grid */}
         <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)', backgroundSize: '44px 44px' }} />
 
-        {/* Top accent line */}
-        <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: `linear-gradient(90deg, transparent, ${role?.color}, transparent)`, transition: 'background 0.5s' }} />
-
         {/* Logo */}
         <div className="relative z-10 flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(174,166,104,0.1)', border: '1px solid rgba(174,166,104,0.2)' }}>
-            <Logo className="h-6 w-6 text-[#AEA668]" strokeWidth={2} />
+          <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(182,157,116,0.12)', border: '1px solid rgba(182,157,116,0.25)' }}>
+            <Logo className="h-6 w-6 text-[#B69D74]" strokeWidth={2} />
           </div>
           <div>
             <p
               className="font-bold text-[15px] uppercase tracking-wider bg-clip-text text-transparent"
               style={{
                 fontFamily: 'var(--font-display)',
-                backgroundImage: 'linear-gradient(90deg, #AEA668 0%, #E6D5B8 50%, #AEA668 100%)',
+                backgroundImage: 'linear-gradient(90deg, #B69D74 0%, #E6D5B8 50%, #B69D74 100%)',
                 display: 'inline-block'
               }}
             >
@@ -458,14 +491,14 @@ const Login = () => {
 
           {/* Mobile logo */}
           <div className="flex lg:hidden items-center gap-2 mb-4">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#1A2236,#2D3A55)' }}>
-              <Logo className="h-5 w-5 text-[#AEA668]" strokeWidth={2} />
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#1F2839,#2D3A50)' }}>
+              <Logo className="h-5 w-5 text-[#B69D74]" strokeWidth={2} />
             </div>
             <span
               className="font-bold text-[15px] uppercase tracking-wider bg-clip-text text-transparent"
               style={{
                 fontFamily: 'var(--font-display)',
-                backgroundImage: 'linear-gradient(90deg, #AEA668 0%, #E6D5B8 50%, #AEA668 100%)',
+                backgroundImage: 'linear-gradient(90deg, #B69D74 0%, #E6D5B8 50%, #B69D74 100%)',
               }}
             >
               Seven Seas
@@ -509,6 +542,42 @@ const Login = () => {
             })}
           </div>
 
+          {/* 1-Click Test Switcher for all 4 Roles */}
+          <div className="p-3 rounded-2xl bg-[#FAF9F5] dark:bg-[#202A3B]/40 border border-[#202A3B]/10 dark:border-white/10 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-wider text-[#B69B72] dark:text-[#D9C7A5]">
+                1-Click Verified Role Logins
+              </span>
+              <span className="text-[9px] text-slate-400">PW: Admin@1234</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+              {[
+                { label: 'Applicant', email: 'applicant@test.com', roleId: 'User' },
+                { label: 'Lawyer', email: 'lawyer@test.com', roleId: 'Lawyer' },
+                { label: 'Court Staff', email: 'staff@test.com', roleId: 'CourtStaff' },
+                { label: 'Admin', email: 'admin@test.com', roleId: 'Admin' }
+              ].map(acc => (
+                <button
+                  key={acc.email}
+                  type="button"
+                  onClick={() => {
+                    setSelectedRole(acc.roleId);
+                    setEmail(acc.email);
+                    setPassword('Admin@1234');
+                    setIsRegister(false);
+                  }}
+                  className={`py-1.5 px-2 rounded-xl text-[10px] font-bold border transition truncate ${
+                    email === acc.email
+                      ? 'bg-[#202A3B] text-white border-[#B69B72] shadow-sm'
+                      : 'bg-white dark:bg-[#1B2332] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-[#B69B72]'
+                  }`}
+                >
+                  {acc.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Sign in / Register toggle */}
           {selectedRole !== 'Admin' && (
             <div className="flex rounded-xl border border-[var(--border-color)] p-1 bg-[var(--bg-app)]">
@@ -543,12 +612,75 @@ const Login = () => {
               </div>
             )}
 
+            {/* Quick Advocate Account Picker (Only visible in Advocate Login) */}
+            {selectedRole === 'Lawyer' && !isRegister && (
+              <div className="p-3.5 rounded-2xl bg-[#FAF9F5] dark:bg-[#202A3B]/40 border border-[#202A3B]/10 dark:border-white/10 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
+                    <Scale size={13} className="text-[#B69B72] dark:text-[#D9C7A5]" />
+                    Select Advocate to Login:
+                  </label>
+                  <span className="text-[10px] text-[#202A3B] dark:text-[#D9C7A5] font-bold bg-[#B69B72]/20 dark:bg-[#B69B72]/30 px-2 py-0.5 rounded-full">
+                    Theni District Court
+                  </span>
+                </div>
+
+                {/* Direct 1-click button for Advocate A. Sundaramurthy */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail('lawyer17@sevenseas.com');
+                    setPassword('Admin@1234');
+                  }}
+                  className={`w-full py-2 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-between cursor-pointer ${
+                    email === 'lawyer17@sevenseas.com' || email.toLowerCase().includes('sundaramurthy')
+                      ? 'bg-[#202A3B] text-white border-[#B69B72] shadow-sm shadow-[#B69B72]/20 ring-2 ring-[#B69B72]/40'
+                      : 'bg-white dark:bg-[#1B2332] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-[#B69B72]'
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <span className="text-[#B69B72]">⭐</span>
+                    <strong>Advocate A. Sundaramurthy</strong>
+                  </span>
+                  <span className="text-[10.5px] opacity-80 font-normal">Sub Court Periyakulam</span>
+                </button>
+
+                {/* Dropdown for all 30 Theni advocates */}
+                <div>
+                  <select
+                    value={THENI_ADVOCATE_LOGINS.some(a => a.email === email) ? email : ''}
+                    onChange={(e) => {
+                      const chosen = THENI_ADVOCATE_LOGINS.find(a => a.email === e.target.value);
+                      if (chosen) {
+                        setEmail(chosen.email);
+                        setPassword('Admin@1234');
+                      }
+                    }}
+                    className="w-full text-xs font-medium py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#1B2332] text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#B69B72] cursor-pointer"
+                  >
+                    <option value="">-- Or choose from all 30 Theni Advocates --</option>
+                    {THENI_ADVOCATE_LOGINS.map(adv => (
+                      <option key={adv.email} value={adv.email}>
+                        {adv.name} — {adv.spec} ({adv.court})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+
             <div className="login-field">
-              <label className="login-label">Email Address</label>
+              <label className="login-label">
+                {selectedRole === 'Lawyer' ? 'Advocate Name or Email' : 'Email Address'}
+              </label>
               <div className="login-input-wrap">
                 <Mail size={14} className="login-input-icon" />
-                <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
-                  placeholder={selectedRole === 'Admin' ? 'admin@domain.com' : 'you@example.com'}
+                <input 
+                  type={selectedRole === 'Lawyer' ? 'text' : 'email'} 
+                  required 
+                  value={email} 
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder={selectedRole === 'Lawyer' ? 'e.g., Advocate A. Sundaramurthy or lawyer17@sevenseas.com' : (selectedRole === 'Admin' ? 'admin@domain.com' : 'you@example.com')}
                   className="login-input"
                 />
               </div>

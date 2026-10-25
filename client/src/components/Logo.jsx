@@ -21,7 +21,7 @@ const Logo = ({ className = "h-6 w-6", showText = false }) => {
           <path d="M 22,35 H 78" stroke="url(#logoGrad)" strokeWidth="4.5" strokeLinecap="round" className="origin-center group-hover:rotate-[6deg] transition-transform duration-500 ease-out" />
           
           {/* Circuit nodes (AI circuit connection dots) */}
-          <circle cx="50" cy="20" r="5" fill="#AEA668" />
+          <circle cx="50" cy="20" r="5" fill="#B69D74" />
           <circle cx="22" cy="35" r="4.5" fill="#8B5CF6" />
           <circle cx="78" cy="35" r="4.5" fill="#8B5CF6" />
           
@@ -51,7 +51,7 @@ const Logo = ({ className = "h-6 w-6", showText = false }) => {
       </div>
       {showText && (
         <span 
-          className="text-sm font-black tracking-[0.25em] bg-clip-text text-transparent bg-gradient-to-r from-white via-[#AEA668] to-white/70"
+          className="text-sm font-black tracking-[0.25em] bg-clip-text text-transparent bg-gradient-to-r from-white via-[#B69D74] to-white/70"
           style={{ fontFamily: 'var(--font-display)' }}
         >
           LEXORA AI

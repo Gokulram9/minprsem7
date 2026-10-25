@@ -6,16 +6,16 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 const colors = [
-  { id: 'trust', name: 'Traditional Trust', value: '#0B3C5D', glowClass: 'shadow-blue-900/20', bgGradient: 'from-[#0B3C5D] to-[#C5A059]' },
-  { id: 'gold', name: 'Antique Gold', value: '#C5A059', glowClass: 'shadow-yellow-600/20', bgGradient: 'from-[#C5A059] to-[#0B3C5D]' },
-  { id: 'sky', name: 'Slate Sky', value: '#3b82f6', glowClass: 'shadow-blue-500/20', bgGradient: 'from-blue-600 to-indigo-600' },
-  { id: 'emerald', name: 'Justice Emerald', value: '#10b981', glowClass: 'shadow-emerald-500/20', bgGradient: 'from-emerald-600 to-teal-700' },
+  { id: 'trust', name: 'Subdued Navy', value: '#202A3B', glowClass: 'shadow-slate-900/20', bgGradient: 'from-[#202A3B] to-[#B69B72]' },
+  { id: 'gold', name: 'Subdued Gold', value: '#B69B72', glowClass: 'shadow-amber-700/20', bgGradient: 'from-[#B69B72] to-[#202A3B]' },
+  { id: 'lavender', name: 'AI Lavender', value: '#EDE9FE', glowClass: 'shadow-purple-400/20', bgGradient: 'from-[#EDE9FE] to-[#202A3B]' },
+  { id: 'cream', name: 'Ivory Base', value: '#F5F5EF', glowClass: 'shadow-stone-400/20', bgGradient: 'from-[#F5F5EF] to-[#202A3B]' },
 ];
 
 const ThemeCustomizer = () => {
   const [open, setOpen] = useState(false);
   const [selectedColor, setSelectedColor] = useState('trust');
-  const [selectedBg, setSelectedBg] = useState('mesh'); // mesh, clean, grid
+  const [selectedBg, setSelectedBg] = useState('clean'); // clean, mesh, grid
 
   // Accessibility States
   const [contrast, setContrast] = useState(false);
@@ -26,7 +26,7 @@ const ThemeCustomizer = () => {
   // Load customizations
   useEffect(() => {
     const savedColor = localStorage.getItem('lexoraAccentColor') || 'trust';
-    const savedBg = localStorage.getItem('lexoraBgStyle') || 'mesh';
+    const savedBg = localStorage.getItem('lexoraBgStyle') || 'clean';
     setSelectedColor(savedColor);
     setSelectedBg(savedBg);
 

@@ -1,6 +1,7 @@
 const Lawyer = require('../models/Lawyer');
 const Review = require('../models/Review');
 const User = require('../models/User');
+const Application = require('../models/Application');
 
 // Create or update lawyer profile details
 const updateLawyerProfile = async (req, res, next) => {
@@ -208,6 +209,57 @@ const getPublicOpponentLawyerProfile = async (req, res, next) => {
   }
 };
 
+const getLawyerStats = async (req, res, next) => {
+  try {
+    const lawyerId = req.user._id;
+
+    const [totalCases, activeCases, completedCases, pendingRequests, lawyerProfile] = await Promise.all([
+      Application.countDocuments({ assignedLawyer: lawyerId }),
+      Application.countDocuments({ assignedLawyer: lawyerId, status: { $in: ['Active', 'Investigation', 'Hearing'] } }),
+      Application.countDocuments({ assignedLawyer: lawyerId, status: { $in: ['Judgment', 'Completed'] } }),
+      Application.countDocuments({ assignedLawyer: lawyerId, status: { $in: ['LawyerAssigned', 'PendingLawyerAcceptance'] } }),
+      Lawyer.findOne({ userId: lawyerId })
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        totalCases,
+        activeCases,
+        completedCases,
+        pendingRequests,
+        rating: lawyerProfile ? lawyerProfile.rating : 5.0,
+        reviewCount: lawyerProfile ? lawyerProfile.reviewCount : 0,
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getMyLawyerProfile = async (req, res, next) => {
+  try {
+    let lawyer = await Lawyer.findOne({ userId: req.user._id }).populate('userId', 'name email phone location specialization');
+    if (!lawyer) {
+      return res.json({
+        success: true,
+        data: null,
+        user: {
+          _id: req.user._id,
+          name: req.user.name,
+          email: req.user.email,
+          phone: req.user.phone,
+          location: req.user.location,
+          specialization: req.user.specialization
+        }
+      });
+    }
+    res.json({ success: true, data: lawyer });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   updateLawyerProfile,
   getLawyers,
@@ -217,5 +269,7 @@ module.exports = {
   createReview,
   getReviews,
   filterLawyers,
-  getPublicOpponentLawyerProfile
+  getPublicOpponentLawyerProfile,
+  getLawyerStats,
+  getMyLawyerProfile
 };

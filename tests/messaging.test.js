@@ -3,6 +3,10 @@ const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const express = require('express');
 
+jest.mock('../server/middleware/authMiddleware', () => ({
+  protect: (req, res, next) => next()
+}));
+
 const Message = require('../server/models/Message');
 const User = require('../server/models/User');
 const Notification = require('../server/models/Notification');

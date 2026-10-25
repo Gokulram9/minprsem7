@@ -30,25 +30,25 @@ const CaseRelationshipGraph = ({ representationData, onSelectProfile }) => {
   };
 
   return (
-    <Card className="relative overflow-hidden bg-slate-900/80 border-slate-800 backdrop-blur-md p-6 rounded-2xl shadow-xl">
+    <Card className="relative overflow-hidden bg-white dark:bg-[#1B2332] border border-slate-200/90 dark:border-slate-800 p-6 rounded-2xl shadow-sm">
       {/* Background Graphic Lines */}
-      <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:16px_16px]" />
+      <div className="absolute inset-0 opacity-5 pointer-events-none bg-[radial-gradient(#B69B72_1px,transparent_1px)] [background-size:16px_16px]" />
 
       {/* Graph Header */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between border-b border-slate-800 pb-4 mb-6 gap-3">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4 mb-6 gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#B69B72]/15 text-[#B69B72] border border-[#B69B72]/30">
               CASE TOPOLOGY GRAPH
             </span>
             <span className="text-xs text-slate-400 font-mono">{caseNumber}</span>
           </div>
-          <h3 className="text-lg font-bold text-slate-100 mt-1">{caseTitle}</h3>
+          <h3 className="text-lg font-bold text-[#202A3B] dark:text-white mt-1" style={{ fontFamily: 'var(--font-display)' }}>{caseTitle}</h3>
         </div>
         <div className="flex items-center gap-2 text-xs">
           <span className="text-slate-400">Presiding Court:</span>
-          <span className="text-slate-200 font-medium">{court}</span>
-          <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+          <span className="text-[#202A3B] dark:text-slate-200 font-medium">{court}</span>
+          <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold">
             {status}
           </span>
         </div>

@@ -5,6 +5,10 @@ const express = require('express');
 const connectDB = require('../server/config/db');
 
 // Import routes and express app components
+jest.mock('../server/middleware/authMiddleware', () => ({
+  protect: (req, res, next) => next()
+}));
+
 const authRoutes = require('../server/routes/authRoutes');
 const lawyerRoutes = require('../server/routes/lawyerRoutes');
 const hearingRoutes = require('../server/routes/hearingRoutes');

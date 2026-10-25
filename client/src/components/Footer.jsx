@@ -21,10 +21,6 @@ const Footer = () => {
 
   return (
     <footer className="relative border-t border-slate-200 bg-white/70 text-slate-600 transition-colors duration-300 dark:border-slate-800 dark:bg-slate-950/70">
-      
-      {/* Decorative ambient glowing blob */}
-      <div className="pointer-events-none absolute bottom-0 left-1/4 h-80 w-80 -translate-x-1/2 rounded-full bg-blue-500/5 blur-[120px] dark:bg-blue-600/5" />
-
       <div className="mx-auto max-w-7xl px-6 py-16">
         <div className="grid gap-12 lg:grid-cols-[1.4fr_1fr_1fr_1.6fr]">
           

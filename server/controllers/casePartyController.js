@@ -408,6 +408,41 @@ const getRepresentationStructure = async (req, res, next) => {
   }
 };
 
+const getOpposingParty = async (req, res, next) => {
+  try {
+    const { caseId } = req.params;
+    const caseApp = await Application.findById(caseId);
+    if (!caseApp) {
+      res.status(404);
+      return next(new Error('Case not found'));
+    }
+    const isPrivileged = checkPrivilege(req.user, caseApp, 'OPPOSING_SIDE');
+    const parties = await CaseParty.find({ caseId, side: 'OPPOSING_SIDE' });
+    const sanitized = parties.map(p => sanitizePartyData(p, isPrivileged));
+    res.json({ success: true, data: sanitized });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getOpposingLawyer = async (req, res, next) => {
+  try {
+    const { caseId } = req.params;
+    const caseApp = await Application.findById(caseId).populate('opposingLawyer');
+    if (!caseApp) {
+      res.status(404);
+      return next(new Error('Case not found'));
+    }
+    if (!caseApp.opposingLawyer) {
+      return res.json({ success: true, data: null, message: 'No opposing lawyer assigned yet' });
+    }
+    const oppProf = await Lawyer.findById(caseApp.opposingLawyer) || await Lawyer.findOne({ userId: caseApp.opposingLawyer });
+    res.json({ success: true, data: oppProf });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getCaseParties,
   getMySideParties,
@@ -418,5 +453,7 @@ module.exports = {
   assignPartyLawyer,
   updateCaseOpponent,
   updateCaseOpposingLawyer,
-  getRepresentationStructure
+  getRepresentationStructure,
+  getOpposingParty,
+  getOpposingLawyer
 };

@@ -83,7 +83,7 @@ const Documents = () => {
       >
         <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-left">
-            <p className="text-xs uppercase tracking-[0.25em] font-semibold text-blue-600 dark:text-blue-400">Lexora Secure Vault</p>
+            <p className="text-xs uppercase tracking-[0.25em] font-semibold text-[#B69B72]">Secure Vault</p>
             <h2 className="font-space text-2xl font-bold mt-1 tracking-tight">Case Document Workspace</h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
               All legal evidence, declarations, and court agreements are stored with zero-knowledge encryption.
@@ -97,7 +97,7 @@ const Documents = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search files..."
-              className="w-full rounded-full border border-slate-200 bg-white py-2.5 pl-11 pr-4 text-xs font-semibold outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+              className="w-full rounded-full border border-slate-200 bg-white py-2.5 pl-11 pr-4 text-xs font-semibold outline-none transition focus:border-[#B69B72] focus:ring-2 focus:ring-[#B69B72]/20 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
             />
           </div>
         </div>
@@ -116,30 +116,30 @@ const Documents = () => {
             <h3 className="font-space text-sm font-bold text-slate-900 dark:text-white mb-4">Upload File</h3>
             
             {/* Drag drop slot */}
-            <div className="relative rounded-[2rem] border-2 border-dashed border-slate-200 p-8 text-center bg-slate-50/50 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900/20 dark:hover:bg-slate-900/40 transition">
+            <div className="relative rounded-[2rem] border-2 border-dashed border-slate-200 p-8 text-center bg-[#FAF9F5] hover:border-[#B69B72] dark:border-slate-800 dark:bg-slate-900/20 dark:hover:bg-slate-900/40 transition">
               <input 
                 type="file" 
                 onChange={handleFileChange}
                 disabled={uploading}
                 className="absolute inset-0 opacity-0 cursor-pointer" 
               />
-              <UploadCloud className="mx-auto h-12 w-12 text-slate-400 animate-bounce" />
+              <UploadCloud className="mx-auto h-12 w-12 text-[#B69B72] animate-bounce" />
               <p className="mt-3 text-xs font-bold text-slate-700 dark:text-slate-200">Drag files here or click to upload</p>
               <p className="mt-1 text-[10px] text-slate-400">PDF, JPG, PNG up to 15MB are scanned for malware.</p>
             </div>
 
             {/* UPLOAD PROGRESS BAR */}
             {uploading && (
-              <div className="mt-6 space-y-2 rounded-2xl bg-blue-50/50 p-4 dark:bg-blue-950/20">
+              <div className="mt-6 space-y-2 rounded-2xl bg-[#FAF9F5] p-4 border border-[#B69B72]/30 dark:bg-slate-900/40">
                 <div className="flex justify-between items-center text-xs font-bold">
-                  <span className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
-                    <RefreshCw size={12} className="animate-spin" /> Uploading:
+                  <span className="flex items-center gap-1.5 text-[#202A3B] dark:text-[#D9C7A5]">
+                    <RefreshCw size={12} className="animate-spin text-[#B69B72]" /> Uploading:
                   </span>
                   <span className="text-[10px] text-slate-400 truncate max-w-[120px]">{uploadedName}</span>
-                  <span className="text-blue-600 dark:text-blue-400">{progress}%</span>
+                  <span className="text-[#B69B72] font-black">{progress}%</span>
                 </div>
                 <div className="h-1.5 w-full bg-slate-100 rounded-full dark:bg-slate-800 overflow-hidden">
-                  <div className="h-full bg-blue-600 transition-all duration-200" style={{ width: `${progress}%` }} />
+                  <div className="h-full bg-gradient-to-r from-[#B69B72] to-[#9A7E55] transition-all duration-200" style={{ width: `${progress}%` }} />
                 </div>
               </div>
             )}
@@ -150,13 +150,13 @@ const Documents = () => {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.15 }}
-            className="rounded-[24px] bg-[#0A1224] p-6 text-white shadow-xl border border-white/5 text-left"
+            className="rounded-[24px] bg-[#202A3B] p-6 text-white shadow-xl border border-[#B69B72]/25 text-left"
           >
             <div className="flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5 text-emerald-400" />
-              <h4 className="font-space text-xs font-bold uppercase tracking-wider text-emerald-400">SHA-256 Vault Signed</h4>
+              <ShieldCheck className="h-5 w-5 text-[#B69B72]" />
+              <h4 className="font-space text-xs font-bold uppercase tracking-wider text-[#D9C7A5]">SHA-256 Vault Signed</h4>
             </div>
-            <p className="mt-3 text-[11px] leading-relaxed text-slate-300">
+            <p className="mt-3 text-[11px] leading-relaxed text-[#F5F5EF]/80">
               Each document is hashed and cross-referenced with your scheduling ID. No metadata is decrypted on server logs.
             </p>
           </motion.div>
@@ -178,10 +178,10 @@ const Documents = () => {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.4, delay: 0.2 + idx * 0.05 }}
                 key={doc.id}
-                className="flex items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/60 transition hover:border-blue-500/50"
+                className="flex items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/60 transition hover:border-[#B69B72]/60 shadow-xs"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#202A3B] text-[#B69B72] border border-[#B69B72]/20">
                     <FileText size={16} />
                   </div>
                   <div className="min-w-0 text-left">
@@ -195,7 +195,13 @@ const Documents = () => {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <span className="rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
+                  <span className={`rounded-full px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+                    doc.status === 'Approved'
+                      ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
+                      : doc.status === 'Pending Review'
+                      ? 'bg-[#B69B72]/15 text-[#8A6F46] dark:text-[#D9C7A5] border border-[#B69B72]/30'
+                      : 'bg-[#202A3B]/10 text-[#202A3B] dark:text-[#D9C7A5] border border-[#202A3B]/20'
+                  }`}>
                     {doc.status}
                   </span>
                   
