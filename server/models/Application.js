@@ -69,6 +69,8 @@ const applicationSchema = mongoose.Schema(
         'Case In Progress',
         'Evidence Submitted',
         'Judgment',
+        'Active',
+        'Resolved',
         'Completed',
         'Rejected',
         'Closed'
