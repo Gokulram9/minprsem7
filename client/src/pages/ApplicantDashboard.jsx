@@ -500,9 +500,13 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
       }));
       setApplications(mappedApps);
 
-      // Filter cases (applications with status other than Submitted/Verification/Under Review/Rejected)
+      // Filter cases (applications with status other than Submitted/Verification/Under Review/Rejected, or with assigned/accepted lawyer)
       const activeCases = apps
-        .filter(a => ['LawyerAssigned', 'CourtScheduled', 'Hearing', 'Judgment', 'Completed'].includes(a.status))
+        .filter(a => 
+          ['Active', 'LawyerAssigned', 'Lawyer Assigned', 'CourtScheduled', 'Hearing Scheduled', 'Hearing', 'Investigation', 'Case In Progress', 'Evidence Submitted', 'Judgment', 'Completed', 'Approved'].includes(a.status) || 
+          Boolean(a.assignedLawyer) || 
+          a.representationStatus === 'Accepted'
+        )
         .map(a => ({
           id: a._id,
           title: a.caseTitle,
@@ -513,9 +517,9 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
           state: a.courtDetails?.state || 'Tamil Nadu',
           judge: a.assignedJudge?.name ? `Hon. Justice ${a.assignedJudge.name}` : (a.judge?.name ? `Hon. Justice ${a.judge.name}` : (a.hearing?.judge || 'Presiding Judge')),
           assignedJudge: a.assignedJudge || a.judge,
-          lawyer: a.assignedLawyer?.name || 'TBD',
-          assignedLawyer: a.assignedLawyer,
-          status: a.status === 'Completed' ? 'Completed' : 'Active',
+          lawyer: a.assignedLawyer?.name || (a.chosenLawyer?.name ? `Adv. ${a.chosenLawyer.name}` : (a.representationStatus === 'Accepted' && a.chosenLawyerName ? `Adv. ${a.chosenLawyerName}` : 'TBD')),
+          assignedLawyer: a.assignedLawyer || a.chosenLawyer,
+          status: a.status === 'Completed' ? 'Completed' : (a.representationStatus === 'Accepted' ? 'Counsel Assigned' : (a.status || 'Active')),
           priority: a.urgency || 'Medium',
           nextHearing: a.hearing?.hearingDate ? new Date(a.hearing.hearingDate).toLocaleDateString() : 'TBD',
           courtChangeRequest: a.courtChangeRequest,
@@ -1935,7 +1939,7 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
       })()}
 
       {/* ── 3. CASES TAB (MY CASES PAGE REDESIGN) ── */}
-      {activeTab === 'cases' && (() => {
+      {(activeTab === 'cases' || activeTab === 'my-cases') && (() => {
         // Derive full case list: prioritize activeCases, fallback to mapped applications if cases array is empty
         const baseCaseList = cases.length > 0 
           ? cases 
