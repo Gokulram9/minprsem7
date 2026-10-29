@@ -12,8 +12,21 @@ const { sendEmail } = require('../services/emailService');
 
 const createApplication = async (req, res, next) => {
   try {
-    const userDistrict = req.body.courtDetails?.district || req.user.district || '';
-    const userState = req.body.courtDetails?.state || req.user.state || '';
+    const caseTitle = (req.body.caseTitle || '').trim();
+    const caseType = (req.body.caseType || 'Civil').trim();
+    const description = (req.body.description || '').trim();
+
+    if (!caseTitle) {
+      res.status(400);
+      return next(new Error('Case title is required. Please provide a title for your legal aid petition.'));
+    }
+    if (!description) {
+      res.status(400);
+      return next(new Error('Case description is required. Please describe the nature of your legal dispute.'));
+    }
+
+    const userDistrict = req.body.courtDetails?.district || req.user.district || 'Theni';
+    const userState = req.body.courtDetails?.state || req.user.state || 'Tamil Nadu';
     const selectedTier = req.body.courtDetails?.courtTier || req.body.courtTier || 'District Court';
     const rawCourtName = req.body.courtDetails?.courtName || req.body.court || '';
 
@@ -59,10 +72,29 @@ const createApplication = async (req, res, next) => {
       });
     }
 
+    const generatedCaseId = 'CASE-' + Date.now().toString().slice(-6) + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+
+    if (req.body.chosenLawyer) {
+      initialTimelineNotes.push({
+        status: 'PendingLawyerAcceptance',
+        date: new Date(),
+        note: `Applicant selected legal counsel. Case forwarded to Advocate for representation review.`,
+        actor: req.user._id,
+        actorName: req.user.name,
+        actorRole: req.user.role,
+        eventType: 'CounselRequested'
+      });
+    }
+
     const payload = {
       ...req.body,
+      caseTitle,
+      caseType,
+      description,
+      caseId: req.body.caseId || generatedCaseId,
       applicant: req.user._id,
       court: assignedCourt,
+      location: req.body.location || userDistrict || 'Theni, Tamil Nadu',
       courtDetails: {
         ...(req.body.courtDetails || {}),
         district: userDistrict,
@@ -72,9 +104,66 @@ const createApplication = async (req, res, next) => {
       },
       courtChangeRequest,
       timeline: initialTimelineNotes,
+      status: req.body.chosenLawyer ? 'PendingLawyerAcceptance' : (req.body.status || 'Submitted'),
+      representationStatus: req.body.chosenLawyer ? 'Requested' : 'None',
+      requestDate: req.body.chosenLawyer ? new Date() : undefined
     };
 
     const application = await Application.create(payload);
+
+    // If a specific lawyer was chosen, notify them immediately in real time
+    if (application.chosenLawyer) {
+      try {
+        let lawyerUserId = application.chosenLawyer;
+        const lawyerDoc = await Lawyer.findById(application.chosenLawyer);
+        if (lawyerDoc && lawyerDoc.userId) {
+          lawyerUserId = lawyerDoc.userId;
+        }
+
+        const lawyerNotif = await Notification.create({
+          user: lawyerUserId,
+          sender: req.user._id,
+          application: application._id,
+          title: 'New Client Representation Request ⚖️',
+          message: `Applicant ${req.user.name} has requested your legal representation for case "${application.caseTitle}" (${application.caseId}). Please review in your dashboard.`,
+          category: 'RepresentationRequest',
+          metadata: {
+            applicationId: application._id,
+            caseId: application.caseId,
+            caseTitle: application.caseTitle,
+            applicantId: req.user._id,
+            applicantName: req.user.name,
+            action: 'REQUESTED'
+          }
+        });
+        sendToUser(lawyerUserId, 'notification', lawyerNotif);
+        sendToUser(lawyerUserId, 'newRepresentationRequest', {
+          applicationId: application._id,
+          caseTitle: application.caseTitle,
+          applicantName: req.user.name
+        });
+      } catch (lawyerErr) {
+        console.warn('Failed to notify chosen lawyer on submission:', lawyerErr.message);
+      }
+    }
+
+    try {
+      const adminUsers = await User.find({ role: 'Admin' });
+      for (const admin of adminUsers) {
+        await Notification.create({
+          user: admin._id,
+          title: 'New Legal Aid Case Submitted',
+          message: `Applicant ${req.user.name} submitted case "${application.caseTitle}" (${application.caseId}) for ${userDistrict} jurisdiction.`,
+          type: 'CASE_UPDATE',
+          category: 'CASE_UPDATE',
+          referenceId: application._id,
+          referenceModel: 'Application'
+        });
+      }
+    } catch (notifErr) {
+      console.warn('Failed to dispatch admin notification:', notifErr.message);
+    }
+
     res.status(201).json(application);
   } catch (error) {
     next(error);
@@ -1138,16 +1227,54 @@ const chooseLawyerForApplication = async (req, res, next) => {
 
     await application.save();
 
-    // 1. Create Notification for the Lawyer
+    // 1. Establish or retrieve Conversation between Applicant and Chosen Advocate
+    let conversation = await Conversation.findOne({
+      participants: { $all: [req.user._id, lawyerUser._id] },
+      caseId: application._id,
+    });
+
+    if (!conversation) {
+      conversation = await Conversation.create({
+        participants: [req.user._id, lawyerUser._id],
+        caseId: application._id,
+        conversationType: 'Applicant-Lawyer',
+        title: `Case: ${application.caseTitle}`,
+        lastMessage: `Counsel selected: Advocate ${resolvedLawyerName}`,
+        lastMessageSender: req.user._id,
+        lastMessageAt: new Date(),
+      });
+    }
+
+    // Post an initial consultation greeting message from applicant to advocate
+    const initialMsgText = `Hello Advocate ${resolvedLawyerName}, I have selected you as my legal counsel for case "${application.caseTitle}". Looking forward to consulting with you regarding legal proceedings.`;
+    const initialMessage = await Message.create({
+      conversation: conversation._id,
+      sender: req.user._id,
+      receiver: lawyerUser._id,
+      application: application._id,
+      text: initialMsgText,
+      messageType: 'text',
+      read: false,
+      readBy: [req.user._id],
+    });
+
+    conversation.lastMessage = initialMsgText;
+    conversation.lastMessageSender = req.user._id;
+    conversation.lastMessageAt = new Date();
+    await conversation.save();
+
+    // 2. Create Notification for the Lawyer
     const lawyerNotification = await Notification.create({
       user: lawyerUser._id,
       sender: req.user._id,
       application: application._id,
+      conversation: conversation._id,
       title: 'New Client Representation Request',
-      message: `Applicant ${req.user.name} has chosen you to represent their case "${application.caseTitle}". Please review details and accept or decline.`,
+      message: `Applicant ${req.user.name} has chosen you to represent their case "${application.caseTitle}". A new case chat has been opened. Please review details and accept or decline.`,
       category: 'RepresentationRequest',
       metadata: {
         applicationId: application._id,
+        conversationId: conversation._id,
         applicantId: req.user._id,
         applicantName: req.user.name,
         applicantEmail: req.user.email,
@@ -1161,18 +1288,20 @@ const chooseLawyerForApplication = async (req, res, next) => {
       },
     });
 
-    // 2. Create Notification for the Applicant (User)
+    // 3. Create Notification for the Applicant (User)
     const applicantNotification = await Notification.create({
       user: req.user._id,
       sender: lawyerUser._id,
       application: application._id,
-      title: 'Advocate Selected',
-      message: `You have successfully chosen Advocate ${lawyerName} for case "${application.caseTitle}". Formal notification dispatched. You will be alerted once counsel accepts.`,
+      conversation: conversation._id,
+      title: 'Advocate Selected & Chat Opened',
+      message: `You have successfully chosen Advocate ${resolvedLawyerName} for case "${application.caseTitle}". A direct consultation chat is now open in your Messages tab.`,
       category: 'CounselChosen',
       metadata: {
         applicationId: application._id,
+        conversationId: conversation._id,
         lawyerId: lawyerUser._id,
-        lawyerName: lawyerName,
+        lawyerName: resolvedLawyerName,
         action: 'CHOSEN',
       },
     });
@@ -1182,6 +1311,9 @@ const chooseLawyerForApplication = async (req, res, next) => {
     if (io) {
       io.to(`user_${lawyerUser._id}`).emit('notification', lawyerNotification);
       io.to(`user_${req.user._id}`).emit('notification', applicantNotification);
+      io.to(`user_${lawyerUser._id}`).emit('conversationUpdate', { conversationId: conversation._id });
+      io.to(`user_${req.user._id}`).emit('conversationUpdate', { conversationId: conversation._id });
+      io.to(`user_${lawyerUser._id}`).emit('newMessage', initialMessage);
       io.emit('applicationUpdate', { applicationId: application._id, status: application.status });
     }
 
@@ -1190,9 +1322,12 @@ const chooseLawyerForApplication = async (req, res, next) => {
 
     res.json({
       success: true,
-      message: `Advocate ${lawyerName} has been chosen! A formal representation request notification was sent to the advocate.`,
+      message: `Advocate ${resolvedLawyerName} has been chosen! A formal representation request and direct chat channel have been opened.`,
       application,
       data: application,
+      conversationId: conversation._id,
+      lawyerId: lawyerUser._id,
+      lawyerName: resolvedLawyerName,
       notification: applicantNotification,
     });
   } catch (error) {
@@ -1250,26 +1385,58 @@ const acceptLawyerRequest = async (req, res, next) => {
 
     application.assignedLawyer = req.user._id;
     application.representationStatus = 'Accepted';
-    application.status = 'LawyerAssigned';
+    application.status = 'PendingStaffConfirmation';
     if (application.verificationStatus === 'Pending') {
-      application.verificationStatus = 'Verified';
+      application.verificationStatus = 'Under Review';
     }
 
     application.timeline.push({
-      status: 'LawyerAssigned',
+      status: 'PendingStaffConfirmation',
       date: new Date(),
-      note: `Advocate ${req.user.name} accepted the representation request. Counsel officially assigned.`,
+      note: `Advocate ${req.user.name} accepted representation. Case forwarded to Court Staff for registry confirmation and docket scheduling.`,
+      actor: req.user._id,
+      actorName: req.user.name,
+      actorRole: req.user.role,
+      eventType: 'LawyerAccepted'
     });
 
     await application.save();
 
-    // 1. Send notification to the applicant
+    // 1. Notify Court Staff & Admin of new case awaiting docket confirmation
+    try {
+      const courtStaffMembers = await User.find({ role: { $in: ['CourtStaff', 'Admin'] } });
+      for (const staff of courtStaffMembers) {
+        const staffNotif = await Notification.create({
+          user: staff._id,
+          sender: req.user._id,
+          application: application._id,
+          title: 'Case Ready for Docket Confirmation 🏛️',
+          message: `Advocate ${req.user.name} accepted representation for case "${application.caseTitle}" (CNR: ${application.caseId}). Case is ready for court confirmation and docket scheduling.`,
+          category: 'DocketConfirmationPending',
+          metadata: {
+            applicationId: application._id,
+            caseId: application.caseId,
+            lawyerId: req.user._id,
+            lawyerName: req.user.name,
+          }
+        });
+        sendToUser(staff._id, 'notification', staffNotif);
+        sendToUser(staff._id, 'docketConfirmationNeeded', {
+          applicationId: application._id,
+          caseTitle: application.caseTitle
+        });
+      }
+    } catch (staffErr) {
+      console.warn('Failed to notify court staff:', staffErr.message);
+    }
+
+    // 2. Send notification to the applicant
     const applicantNotification = await Notification.create({
       user: application.applicant._id || application.applicant,
       sender: req.user._id,
       application: application._id,
-      title: 'Representation Request Accepted! 🎉',
-      message: `Advocate ${req.user.name} has ACCEPTED your representation request for case "${application.caseTitle}". Your lawyer is now officially assigned and active.`,
+      title: 'Advocate Accepted Representation! 🎉',
+      message: `Advocate ${req.user.name} has ACCEPTED your representation request for case "${application.caseTitle}". Your case is now with Court Staff for registry confirmation and hearing scheduling.`,
       category: 'RequestAccepted',
       metadata: {
         applicationId: application._id,
@@ -1682,6 +1849,197 @@ const getCaseNotes = async (req, res, next) => {
   }
 };
 
+/**
+ * Court Staff / Admin confirms and admits case to official court docket and schedules hearing
+ * Endpoint: PATCH /api/applications/:id/confirm-docket
+ * Authorized roles: CourtStaff, Admin
+ */
+const confirmAndDocketCase = async (req, res, next) => {
+  try {
+    const {
+      judgeId,
+      assignedJudge,
+      courtroom,
+      hearingDate,
+      hearingTime,
+      timeSlot,
+      hearingType,
+      purpose,
+      notes,
+      remarks,
+    } = req.body;
+
+    const application = await Application.findById(req.params.id)
+      .populate('applicant', 'name email phone location')
+      .populate('assignedLawyer', 'name email phone location specialization')
+      .populate('chosenLawyer', 'name email phone location specialization');
+
+    if (!application) {
+      res.status(404);
+      return next(new Error('Case / Application not found'));
+    }
+
+    // 1. Resolve Presiding Judge
+    const targetJudgeId = judgeId || assignedJudge;
+    let judgeUser = null;
+    let judgeDoc = null;
+
+    if (targetJudgeId) {
+      if (mongoose.Types.ObjectId.isValid(targetJudgeId)) {
+        judgeUser = await User.findById(targetJudgeId);
+        if (judgeUser && judgeUser.role === 'Judge') {
+          judgeDoc = await Judge.findOne({ userId: judgeUser._id });
+        } else {
+          judgeDoc = await Judge.findById(targetJudgeId).populate('userId');
+          if (judgeDoc && judgeDoc.userId) {
+            judgeUser = judgeDoc.userId;
+          }
+        }
+      }
+    }
+
+    // If no specific judge passed or found, look up active Judge in system
+    if (!judgeUser) {
+      judgeDoc = await Judge.findOne({ isActive: true }).populate('userId');
+      if (judgeDoc && judgeDoc.userId) {
+        judgeUser = judgeDoc.userId;
+      } else {
+        judgeUser = await User.findOne({ role: 'Judge' });
+      }
+    }
+
+    const resolvedJudgeName = judgeDoc?.name || (judgeUser ? judgeUser.name : 'Hon. Justice Shanmugam');
+    const resolvedCourtroom = courtroom || application.court || 'Courtroom A';
+    const resolvedTime = hearingTime || timeSlot || '10:00 AM';
+    const resolvedPurpose = hearingType || purpose || 'Preliminary Hearing & Docket Admission';
+    const effectiveHearingDate = hearingDate ? new Date(hearingDate) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    // 2. Update Application Status & Docket Fields
+    application.status = 'CourtScheduled';
+    application.verificationStatus = 'Verified';
+    if (judgeUser) {
+      application.assignedJudge = judgeUser._id;
+      application.judge = judgeUser._id;
+    }
+    application.court = resolvedCourtroom;
+    if (!application.courtDetails) application.courtDetails = {};
+    application.courtDetails.courtName = resolvedCourtroom;
+
+    // 3. Create or update official Hearing record
+    const hearing = await Hearing.create({
+      application: application._id,
+      hearingDate: effectiveHearingDate,
+      timeSlot: resolvedTime,
+      courtroom: resolvedCourtroom,
+      judge: judgeUser ? judgeUser._id : undefined,
+      judgeName: resolvedJudgeName,
+      purpose: resolvedPurpose,
+      status: 'Scheduled',
+      notes: notes || remarks || `Case admitted to Court Docket by ${req.user.name} (Court Staff).`,
+    });
+
+    application.hearing = hearing._id;
+
+    // 4. Record in Timeline
+    const dateFormatted = effectiveHearingDate.toLocaleDateString([], { dateStyle: 'medium' });
+    application.timeline.push({
+      status: 'CourtScheduled',
+      date: new Date(),
+      note: `Case admitted to official Court Docket by ${req.user.name} (${req.user.role}). Presiding Bench: ${resolvedJudgeName}. Courtroom: ${resolvedCourtroom}. Hearing scheduled for ${dateFormatted} at ${resolvedTime}.`,
+      actor: req.user._id,
+      actorName: req.user.name,
+      actorRole: req.user.role,
+      eventType: 'CourtDocketConfirmed',
+      details: {
+        hearingId: hearing._id,
+        courtroom: resolvedCourtroom,
+        hearingDate: effectiveHearingDate,
+        timeSlot: resolvedTime,
+        judgeName: resolvedJudgeName,
+      }
+    });
+
+    await application.save();
+
+    // 5. Notify Applicant
+    if (application.applicant) {
+      const applicantId = application.applicant._id || application.applicant;
+      const applicantNotif = await Notification.create({
+        user: applicantId,
+        sender: req.user._id,
+        application: application._id,
+        title: 'Case Admitted to Court Docket! ⚖️',
+        message: `Your case "${application.caseTitle}" has been officially approved and admitted to the Court Docket! Hearing is scheduled on ${dateFormatted} at ${resolvedTime} in ${resolvedCourtroom} before ${resolvedJudgeName}.`,
+        category: 'HearingScheduled',
+        metadata: {
+          applicationId: application._id,
+          hearingId: hearing._id,
+          courtroom: resolvedCourtroom,
+          hearingDate: effectiveHearingDate,
+          timeSlot: resolvedTime,
+        }
+      });
+      sendToUser(applicantId, 'notification', applicantNotif);
+      sendToUser(applicantId, 'caseUpdate', { applicationId: application._id, status: 'CourtScheduled' });
+    }
+
+    // 6. Notify Assigned Lawyer
+    const effectiveLawyer = application.assignedLawyer || application.chosenLawyer;
+    if (effectiveLawyer) {
+      const lawyerId = effectiveLawyer._id || effectiveLawyer;
+      const lawyerNotif = await Notification.create({
+        user: lawyerId,
+        sender: req.user._id,
+        application: application._id,
+        title: 'Case Docketed & Hearing Scheduled 📅',
+        message: `Case "${application.caseTitle}" (CNR: ${application.caseId}) has been admitted to Court Docket. Hearing is set for ${dateFormatted} at ${resolvedTime} in ${resolvedCourtroom}.`,
+        category: 'HearingScheduled',
+        metadata: {
+          applicationId: application._id,
+          hearingId: hearing._id,
+          courtroom: resolvedCourtroom,
+          hearingDate: effectiveHearingDate,
+          timeSlot: resolvedTime,
+        }
+      });
+      sendToUser(lawyerId, 'notification', lawyerNotif);
+      sendToUser(lawyerId, 'caseUpdate', { applicationId: application._id, status: 'CourtScheduled' });
+    }
+
+    // 7. Notify Judge if assigned
+    if (judgeUser) {
+      const judgeNotif = await Notification.create({
+        user: judgeUser._id,
+        sender: req.user._id,
+        application: application._id,
+        title: 'New Case Admitted to Judicial Docket',
+        message: `New case "${application.caseTitle}" (CNR: ${application.caseId}) has been assigned to your bench for hearing on ${dateFormatted} in ${resolvedCourtroom}.`,
+        category: 'JudgeAssigned',
+        metadata: {
+          applicationId: application._id,
+          hearingId: hearing._id,
+          courtroom: resolvedCourtroom,
+          hearingDate: effectiveHearingDate,
+        }
+      });
+      sendToUser(judgeUser._id, 'notification', judgeNotif);
+    }
+
+    // 8. Broadcast
+    broadcast('applicationUpdate', { applicationId: application._id, status: 'CourtScheduled' });
+    broadcast('hearingCreated', hearing);
+
+    res.json({
+      success: true,
+      message: `Case successfully admitted to Court Docket and scheduled for hearing on ${dateFormatted} in ${resolvedCourtroom}.`,
+      application,
+      hearing,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createApplication,
   updateApplication,
@@ -1695,6 +2053,7 @@ module.exports = {
   getLawyerRequests,
   acceptLawyerRequest,
   declineLawyerRequest,
+  confirmAndDocketCase,
   getAssignedCases,
   acceptCase,
   declineCase,

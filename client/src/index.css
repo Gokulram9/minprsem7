@@ -2827,8 +2827,8 @@ header.sticky {
   transition: all 0.2s ease;
 }
 .login-input:focus {
-  border-color: var(--blue-600);
-  box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+  border-color: #B69B72;
+  box-shadow: 0 0 0 3px rgba(182,155,114,0.15);
 }
 .login-input::placeholder { color: var(--text-muted); }
 .login-select {

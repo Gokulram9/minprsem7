@@ -289,7 +289,7 @@ export default function ProfilePage() {
     }
   };
 
-  const handlePasswordUpdate = (e) => {
+  const handlePasswordUpdate = async (e) => {
     e.preventDefault();
     setPasswordError('');
     if (!currentPassword) {
@@ -305,11 +305,20 @@ export default function ProfilePage() {
       return;
     }
 
-    // Success simulation
-    showToast('Security credentials updated. Password changed successfully.');
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
+    try {
+      const res = await axios.put('/auth/change-password', {
+        currentPassword,
+        newPassword
+      });
+      showToast(res.data?.message || 'Security credentials updated. Password changed successfully.');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to update password';
+      setPasswordError(msg);
+      showToast('Error: ' + msg);
+    }
   };
 
   return (

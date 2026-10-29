@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Hearing = require('../models/Hearing');
 const Application = require('../models/Application');
 const Notification = require('../models/Notification');
@@ -67,13 +68,26 @@ const scheduleHearing = async (req, res, next) => {
       });
     }
 
+    let judgeObjectId = undefined;
+    if (mongoose.Types.ObjectId.isValid(application.assignedJudge)) {
+      judgeObjectId = application.assignedJudge;
+    } else if (mongoose.Types.ObjectId.isValid(application.judge)) {
+      judgeObjectId = application.judge;
+    } else if (mongoose.Types.ObjectId.isValid(judge)) {
+      judgeObjectId = judge;
+    }
+
+    const judgeNameString = typeof judge === 'string' && !mongoose.Types.ObjectId.isValid(judge)
+      ? judge
+      : (application.assignedJudge?.name || 'Hon. Presiding Judge');
+
     const hearing = await Hearing.create({
       application: application._id,
       hearingDate: new Date(hearingDate),
       timeSlot: timeSlot || '10:00 AM',
       courtroom: courtroom || 'Courtroom A',
-      judge: application.assignedJudge || application.judge || judge || 'Hon. Presiding Judge',
-      judgeName: judge || 'Hon. Presiding Judge',
+      judge: judgeObjectId,
+      judgeName: judgeNameString,
       purpose: purpose || 'Hearing & Evidence Examination',
       notes,
       status: 'Scheduled'

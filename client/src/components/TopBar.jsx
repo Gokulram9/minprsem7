@@ -153,23 +153,12 @@ const TopBar = ({ sidebarCollapsed, onToggleSidebar }) => {
             <Menu size={15} className="group-hover:scale-110 transition-transform" />
           </button>
 
-          {/* Dynamic Breadcrumbs */}
+          {/* Brand Logo & Name */}
           <div className="flex items-center gap-2">
             <div className="topbar-brand-icon shrink-0">
               <Logo className="h-[15px] w-[15px] text-[#B69B72]" strokeWidth={2} />
             </div>
-            <div className="hidden md:flex items-center gap-1.5 text-xs text-slate-455 dark:text-slate-400 font-semibold font-mono">
-              <span className="text-[var(--text-muted)] font-bold">portal</span>
-              {location.pathname.split('/').filter(x => x && x !== 'dashboard' && x !== 'portal').map((p, idx, arr) => (
-                <span key={idx} className="flex items-center gap-1.5">
-                  <span className="text-slate-400/30">/</span>
-                  <span className={idx === arr.length - 1 ? 'text-[#B69B72] font-bold' : 'text-[var(--text-secondary)] font-medium hover:text-[var(--text-primary)] transition'}>
-                    {p}
-                  </span>
-                </span>
-              ))}
-            </div>
-            <div className="flex md:hidden flex-col -gap-0.5">
+            <div className="flex flex-col -gap-0.5">
               <span
                 className="text-[14px] font-bold leading-none tracking-[0.1em] uppercase"
                 style={{

@@ -60,6 +60,8 @@ const applicationSchema = mongoose.Schema(
         'Under Review',
         'Approved',
         'PendingLawyerAcceptance',
+        'PendingStaffConfirmation',
+        'PendingCourtApproval',
         'Lawyer Assigned',
         'LawyerAssigned',
         'Hearing Scheduled',
@@ -82,7 +84,7 @@ const applicationSchema = mongoose.Schema(
     monthlyIncome: { type: Number },
     verificationStatus: {
       type: String,
-      enum: ['Pending', 'Verified', 'Rejected', 'Resubmission Required'],
+      enum: ['Pending', 'Under Review', 'Verified', 'Rejected', 'Resubmission Required'],
       default: 'Pending',
     },
 

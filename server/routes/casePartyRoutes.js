@@ -13,11 +13,22 @@ const {
   getOpposingParty,
   getOpposingLawyer
 } = require('../controllers/casePartyController');
+
+const {
+  createApplication,
+  getUserApplications,
+  getAllApplications,
+  getApplicationById,
+  updateApplication,
+  updateApplicationStatus,
+} = require('../controllers/applicationController');
+
 const { protect } = require('../middleware/authMiddleware');
 const { authorizeRoles } = require('../middleware/roleMiddleware');
 
 const router = express.Router();
 
+// Specific sub-resource party & representation routes
 router.get('/:caseId/parties', protect, getCaseParties);
 router.get('/:caseId/parties/my-side', protect, getMySideParties);
 router.get('/:caseId/parties/opposing-side', protect, getOpposingSideParties);
@@ -32,5 +43,19 @@ router.delete('/:caseId/parties/:partyId', protect, authorizeRoles('Admin', 'Cou
 router.post('/:caseId/parties/:partyId/assign-lawyer', protect, authorizeRoles('Admin', 'CourtStaff'), assignPartyLawyer);
 router.put('/:caseId/opponent', protect, authorizeRoles('Admin', 'CourtStaff', 'Lawyer'), updateCaseOpponent);
 router.put('/:caseId/opponent-lawyer', protect, authorizeRoles('Admin', 'CourtStaff'), updateCaseOpposingLawyer);
+
+// Top-level Case CRUD operations (bridging cases and applications)
+router.post('/', protect, authorizeRoles('Applicant', 'User', 'Admin'), createApplication);
+
+router.get('/', protect, (req, res, next) => {
+  if (['Applicant', 'User'].includes(req.user.role)) {
+    return getUserApplications(req, res, next);
+  }
+  return getAllApplications(req, res, next);
+});
+
+router.get('/:id', protect, authorizeRoles('Admin', 'CourtStaff', 'Lawyer', 'Applicant', 'User', 'Judge'), getApplicationById);
+router.put('/:id', protect, authorizeRoles('Applicant', 'User', 'Admin', 'Lawyer'), updateApplication);
+router.patch('/:id/status', protect, authorizeRoles('Admin', 'CourtStaff', 'Lawyer', 'Judge'), updateApplicationStatus);
 
 module.exports = router;

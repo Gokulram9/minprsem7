@@ -202,23 +202,46 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
       const judgeUsers = allUsers.filter(u => u.role === 'Judge');
       setJudges(judgeUsers);
 
-      // Filter Lawyers
-      const lawyerUsers = allUsers.filter(u => u.role === 'Lawyer');
-      if (lawyerUsers.length > 0) {
-        setLawyers(lawyerUsers.map(l => ({
-          id: l._id,
-          _id: l._id,
-          name: `Advocate ${l.name}`,
-          email: l.email,
-          license: l.barNumber || 'BC/SL/88219',
-          specialization: l.specialization || 'General Practice',
-          experience: l.experience || 10,
-          rating: 4.8,
-          successRate: 92,
-          status: 'Active',
-          verification: 'Verified',
-          availability: 'High'
-        })));
+      // Fetch verified & pending Lawyers from /admin/lawyers
+      try {
+        const lawyerResp = await axios.get('/admin/lawyers');
+        if (lawyerResp?.data?.data && lawyerResp.data.data.length > 0) {
+          setLawyers(lawyerResp.data.data.map(l => ({
+            id: l._id,
+            _id: l._id,
+            userId: l.userId?._id || l.userId,
+            name: l.fullName.startsWith('Advocate') ? l.fullName : `Advocate ${l.fullName}`,
+            email: l.userId?.email || 'N/A',
+            license: l.barRegistrationNumber || 'BC/VERIFIED',
+            specialization: (l.specializations && l.specializations[0]) || l.specialization || 'General Practice',
+            experience: l.experience || 5,
+            rating: l.rating || 4.8,
+            successRate: l.successRate || 85,
+            status: l.availabilityStatus || 'Active',
+            verification: l.verificationStatus === 'Pending' ? 'Pending Approval' : (l.verificationStatus || 'Verified'),
+            availability: l.availabilityStatus || 'Available'
+          })));
+        } else {
+          const lawyerUsers = allUsers.filter(u => u.role === 'Lawyer');
+          if (lawyerUsers.length > 0) {
+            setLawyers(lawyerUsers.map(l => ({
+              id: l._id,
+              _id: l._id,
+              name: `Advocate ${l.name}`,
+              email: l.email,
+              license: l.barNumber || 'BC/SL/88219',
+              specialization: l.specialization || 'General Practice',
+              experience: l.experience || 10,
+              rating: 4.8,
+              successRate: 92,
+              status: 'Active',
+              verification: 'Verified',
+              availability: 'High'
+            })));
+          }
+        }
+      } catch (err) {
+        console.warn('Could not load /admin/lawyers:', err);
       }
 
       // Fetch dedicated Judge records from /judges/all
@@ -254,6 +277,8 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
       console.error('Failed to load admin dashboard data:', err);
     }
   };
+
+  const fetchAdminData = fetchDashboardData;
 
   useEffect(() => {
     fetchDashboardData();
@@ -302,61 +327,83 @@ const AdminDashboard = ({ activeTab = 'dashboard' }) => {
   ]);
 
 
-  // User Actions
-  const handleCreateUser = (e) => {
+  // User Actions (Real Backend API Integration)
+  const handleCreateUser = async (e) => {
     e.preventDefault();
-    const newId = `USR00${applicants.length + 1}`;
-    setApplicants([...applicants, {
-      id: newId,
-      name: createUserForm.name,
-      email: createUserForm.email,
-      phone: '+94 77 000 0000',
-      status: 'Active',
-      date: new Date().toISOString().split('T')[0],
-      cases: 0
-    }]);
-    alert(`Success: User ${createUserForm.name} created successfully.`);
-    setShowCreateUserModal(false);
-    setCreateUserForm({ name: '', email: '', role: 'User', password: 'Password@1234' });
-  };
-
-  const handleToggleUserStatus = (userId) => {
-    setApplicants(applicants.map(u => {
-      if (u.id === userId) {
-        const nextStatus = u.status === 'Active' ? 'Suspended' : 'Active';
-        alert(`User ${u.name} status updated to ${nextStatus}.`);
-        return { ...u, status: nextStatus };
+    try {
+      const res = await axios.post('/admin/users', createUserForm);
+      if (res.data?.success || res.data?.user) {
+        alert(`Success: User ${createUserForm.name} created successfully in MongoDB Atlas.`);
+        setShowCreateUserModal(false);
+        setCreateUserForm({ name: '', email: '', role: 'User', password: 'Password@1234' });
+        fetchAdminData();
       }
-      return u;
-    }));
-  };
-
-  const handleDeleteUser = (userId) => {
-    if (confirm('Are you sure you want to permanently delete this user?')) {
-      setApplicants(applicants.filter(u => u.id !== userId));
-      alert('User deleted.');
+    } catch (err) {
+      alert('Failed to create user: ' + (err.response?.data?.message || err.message));
     }
   };
 
-  // Lawyer approvals actions
-  const handleApproveLawyer = (lawyerId) => {
-    setLawyers(lawyers.map(l => {
-      if (l.id === lawyerId) {
-        alert(`Lawyer ${l.name} has been verified and registered.`);
-        return { ...l, verification: 'Verified', status: 'Active' };
-      }
-      return l;
-    }));
+  const handleToggleUserStatus = async (userId) => {
+    try {
+      const res = await axios.patch(`/admin/users/${userId}/status`);
+      const updated = res.data?.user;
+      setApplicants(applicants.map(u => {
+        if (u.id === userId || u._id === userId) {
+          const nextStatus = updated?.status || (u.status === 'Active' ? 'Suspended' : 'Active');
+          return { ...u, status: nextStatus };
+        }
+        return u;
+      }));
+      alert('User status persisted to database.');
+    } catch (err) {
+      alert('Failed to update status: ' + (err.response?.data?.message || err.message));
+    }
   };
 
-  const handleRejectLawyer = (lawyerId) => {
-    setLawyers(lawyers.map(l => {
-      if (l.id === lawyerId) {
-        alert(`Lawyer ${l.name} application rejected.`);
-        return { ...l, verification: 'Rejected', status: 'Suspended' };
+  const handleDeleteUser = async (userId) => {
+    if (confirm('Are you sure you want to permanently delete this user?')) {
+      try {
+        await axios.delete(`/admin/users/${userId}`);
+        setApplicants(applicants.filter(u => u.id !== userId && u._id !== userId));
+        alert('User removed from system.');
+        fetchAdminData();
+      } catch (err) {
+        alert('Failed to delete user: ' + (err.response?.data?.message || err.message));
       }
-      return l;
-    }));
+    }
+  };
+
+  // Lawyer approvals actions (Real Backend API Integration)
+  const handleApproveLawyer = async (lawyerId) => {
+    try {
+      await axios.patch(`/admin/lawyers/${lawyerId}/verify`, { status: 'Verified' });
+      setLawyers(lawyers.map(l => {
+        if (l.id === lawyerId || l._id === lawyerId) {
+          return { ...l, verification: 'Verified', status: 'Active' };
+        }
+        return l;
+      }));
+      alert('Lawyer credentials verified and approved in database.');
+      fetchAdminData();
+    } catch (err) {
+      alert('Failed to verify lawyer: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleRejectLawyer = async (lawyerId) => {
+    try {
+      await axios.patch(`/admin/lawyers/${lawyerId}/verify`, { status: 'Rejected' });
+      setLawyers(lawyers.map(l => {
+        if (l.id === lawyerId || l._id === lawyerId) {
+          return { ...l, verification: 'Rejected', status: 'Suspended' };
+        }
+        return l;
+      }));
+      alert('Lawyer verification rejected in database.');
+      fetchAdminData();
+    } catch (err) {
+      alert('Failed to reject lawyer: ' + (err.response?.data?.message || err.message));
+    }
   };
 
   // Legal Aid controls

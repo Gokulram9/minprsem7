@@ -12,6 +12,7 @@ const {
   getLawyerRequests,
   acceptLawyerRequest,
   declineLawyerRequest,
+  confirmAndDocketCase,
   getAssignedCases,
   acceptCase,
   declineCase,
@@ -56,5 +57,6 @@ router.get('/', protect, authorizeRoles('Admin', 'CourtStaff', 'Lawyer'), getAll
 router.patch('/:id/status', protect, authorizeRoles('Admin', 'CourtStaff', 'Lawyer'), updateApplicationStatus);
 router.patch('/:id/assign-lawyer', protect, authorizeRoles('Admin', 'CourtStaff'), assignLawyer);
 router.patch('/:id/assign-judge', protect, authorizeRoles('Admin', 'CourtStaff'), assignJudge);
+router.patch('/:id/confirm-docket', protect, authorizeRoles('Admin', 'CourtStaff'), confirmAndDocketCase);
 
 module.exports = router;

@@ -2,7 +2,7 @@ const authorizeRoles = (...allowedRoles) => {
   return (req, res, next) => {
     if (!req.user) {
       res.status(401);
-      return next(new Error('Not authorized: user context missing'));
+      return next(new Error('Session expired or user context missing. Please log in again.'));
     }
     const role = req.user.role;
     // Map User and Applicant interchangeably

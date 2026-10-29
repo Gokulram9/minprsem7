@@ -4,7 +4,16 @@ let socket = null;
 
 export const initSocket = (user) => {
   const token = localStorage.getItem('legalAidToken');
-  const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  let SOCKET_URL = import.meta.env.VITE_SOCKET_URL;
+  if (!SOCKET_URL) {
+    if (import.meta.env.VITE_API_URL) {
+      SOCKET_URL = import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '');
+    } else if (typeof window !== 'undefined') {
+      SOCKET_URL = `${window.location.protocol}//${window.location.hostname}:5000`;
+    } else {
+      SOCKET_URL = 'http://localhost:5000';
+    }
+  }
 
   if (!socket) {
     socket = io(SOCKET_URL, {

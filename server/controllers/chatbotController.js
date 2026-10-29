@@ -23,6 +23,13 @@ const handleChatbotMessage = async (req, res, next) => {
       triggerRecommendation = chatbotResp.data.triggerRecommendation || false;
       filters = chatbotResp.data.filters || {};
       intent = chatbotResp.data.intent || null;
+
+      if (updatedContext.caseType === 'Family & Matrimonial Law') {
+        updatedContext.caseType = 'Family Law';
+      }
+      if (updatedContext.location && updatedContext.location.includes(',')) {
+        updatedContext.location = updatedContext.location.split(',')[0].trim();
+      }
     } catch (err) {
       console.warn('Python chatbot service unavailable, executing Node.js legal intent parser:', err.message);
       
@@ -39,7 +46,7 @@ const handleChatbotMessage = async (req, res, next) => {
       } else if (lower.includes('arrest') || lower.includes('bail') || lower.includes('police') || lower.includes('crime') || lower.includes('fir')) {
         updatedContext.caseType = 'Criminal Law';
       } else if (lower.includes('divorce') || lower.includes('custody') || lower.includes('marriage') || lower.includes('maintenance')) {
-        updatedContext.caseType = 'Family & Matrimonial Law';
+        updatedContext.caseType = 'Family Law';
       } else if (lower.includes('contract') || lower.includes('agreement') || lower.includes('money suit') || lower.includes('recovery')) {
         updatedContext.caseType = 'Civil & Contract Law';
       } else if (lower.includes('cheque') || lower.includes('check') || lower.includes('138') || lower.includes('dishonor')) {
@@ -56,7 +63,7 @@ const handleChatbotMessage = async (req, res, next) => {
         if (lower.includes(city.toLowerCase())) {
           updatedContext.district = city === 'Tamil Nadu' ? 'Theni' : city;
           updatedContext.state = 'Tamil Nadu';
-          updatedContext.location = `${updatedContext.district}, Tamil Nadu`;
+          updatedContext.location = updatedContext.district;
         }
       }
 

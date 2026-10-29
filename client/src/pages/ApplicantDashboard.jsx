@@ -822,14 +822,23 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
       };
 
       const res = await axios.post(`/applications/${targetId}/choose-lawyer`, payload);
+      const conversationId = res.data?.conversationId;
+      const targetLawyerUserId = res.data?.lawyerId || chosenLawyerId;
       setChosenNotice({
         lawyerName: chosenLawyerName,
         caseTitle: payload.caseTitle,
+        lawyerId: targetLawyerUserId,
+        conversationId: conversationId,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       });
 
       await fetchDashboardData();
-      alert(`🎉 Representation Request Sent to ${chosenLawyerName}!\n\nCase: "${payload.caseTitle}"\n\nYour request has been officially dispatched to the Lawyer Portal for ${chosenLawyerName}.\n\nWhen ${chosenLawyerName} logs into their portal, they will see your docket under "Incoming Client Representation Requests" to accept representation.`);
+      const openChat = window.confirm(
+        `🎉 Representation Request Sent to ${chosenLawyerName}!\n\nCase: "${payload.caseTitle}"\n\nA direct message channel has been created in your Messages tab.\n\nWould you like to open your chat with Advocate ${chosenLawyerName} right now?`
+      );
+      if (openChat) {
+        navigate(`/dashboard/messages?conversationId=${conversationId || ''}&lawyerId=${targetLawyerUserId}`);
+      }
     } catch (err) {
       console.error('Error choosing lawyer:', err);
       alert('Failed to request representation: ' + (err.response?.data?.message || err.message));
@@ -842,25 +851,35 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
   const handleApplySubmit = async (e) => {
     e.preventDefault();
     try {
+      const appDistrict = user?.district || 'Theni';
+      const appState = user?.state || 'Tamil Nadu';
       const payload = {
-        caseTitle: `${applyForm.caseType} for ${applyForm.fullName}`,
-        caseType: applyForm.caseType,
-        description: applyForm.caseDescription,
-        urgency: applyForm.urgency,
-        court: 'District Court',
-        location: applyForm.address || 'Colombo',
-        occupation: applyForm.occupation,
-        monthlyIncome: Number(applyForm.monthlyIncome) || 0
+        caseTitle: (applyForm.caseTitle || '').trim() || `${applyForm.caseType || 'Civil'} for ${applyForm.fullName || user?.name || 'Citizen'}`,
+        caseType: applyForm.caseType || 'Civil',
+        description: (applyForm.caseDescription || '').trim() || `${applyForm.caseType || 'Civil'} application submitted for legal aid.`,
+        urgency: applyForm.urgency || 'Medium',
+        court: `${appDistrict} District Court`,
+        location: applyForm.address || `${appDistrict}, ${appState}`,
+        occupation: applyForm.occupation || '',
+        monthlyIncome: Number(applyForm.monthlyIncome) || 0,
+        courtDetails: {
+          district: appDistrict,
+          state: appState,
+          courtTier: 'District Court',
+          courtName: `${appDistrict} District Court`
+        }
       };
       
       const response = await axios.post('/applications', payload);
-      alert(`Success: Legal Aid Application has been successfully created!`);
+      const generatedCaseId = response.data?.caseId || response.data?._id || '';
+      alert(`Success: Legal Aid Application has been successfully created!\n\nReference Case ID: ${generatedCaseId}`);
       setShowApplyModal(false);
       setApplyStep(1);
       fetchDashboardData();
     } catch (err) {
       console.error('Error creating application:', err);
-      alert('Failed to submit application: ' + (err.response?.data?.message || err.message));
+      const errMsg = err.response?.data?.message || err.message || 'Submission failed. Please check your network and required fields.';
+      alert('Failed to submit application: ' + errMsg);
     }
   };
 
@@ -2387,15 +2406,40 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
 
       {/* ── 4. AI LAWYER TAB ── */}
       {activeTab === 'ai-recommend' && (
-        <AiLawyerRecommender
-          user={user}
-          applications={applications}
-          pendingLawyerApp={pendingLawyerApp}
-          acceptedLawyerApp={acceptedLawyerApp}
-          onChooseLawyer={handleChooseLawyer}
-          submittingChoice={submittingChoice}
-          navigate={navigate}
-        />
+        <div className="space-y-4">
+          {chosenNotice && (
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-500/5 border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 shrink-0">
+                  <CheckCircle2 size={20} />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-800 dark:text-white">
+                    Advocate {chosenNotice.lawyerName} Selected!
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Case: <strong>{chosenNotice.caseTitle}</strong> • Direct consultation message channel is open in your Messages tab.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate(`/dashboard/messages?lawyerId=${chosenNotice.lawyerId}&conversationId=${chosenNotice.conversationId || ''}`)}
+                className="btn-primary text-xs py-2 px-4 rounded-xl font-bold flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/20 shrink-0"
+              >
+                <MessageSquare size={13} /> Open Chat in Messages
+              </button>
+            </div>
+          )}
+          <AiLawyerRecommender
+            user={user}
+            applications={applications}
+            pendingLawyerApp={pendingLawyerApp}
+            acceptedLawyerApp={acceptedLawyerApp}
+            onChooseLawyer={handleChooseLawyer}
+            submittingChoice={submittingChoice}
+            navigate={navigate}
+          />
+        </div>
       )}
 
       {/* ── 4B. ASSIGNED / CHOSEN LAWYER TAB ── */}
@@ -2436,7 +2480,13 @@ const ApplicantDashboard = ({ activeTab = 'dashboard' }) => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => navigate(`/dashboard/messages?lawyerId=${pendingLawyerApp.chosenLawyer || pendingLawyerApp.raw?.chosenLawyer}`)}
+                    className="btn-primary text-xs px-4 py-2.5 rounded-xl font-bold flex items-center gap-1.5 shadow-md shadow-blue-500/20"
+                  >
+                    <MessageSquare size={14} /> Message Advocate
+                  </button>
                   <button
                     onClick={() => navigate('/dashboard/applications')}
                     className="btn-secondary text-xs px-4 py-2.5 rounded-xl font-bold"

@@ -5,6 +5,9 @@ import { ThemeContext } from '../contexts/ThemeContext';
 import { motion } from 'framer-motion';
 import judgeApi from '../api/judgeApi';
 import ProfilePage from './ProfilePage';
+import ChatCenter from '../components/chat/ChatCenter';
+import Documents from './Documents';
+import Notifications from './Notifications';
 import {
   Scale,
   Calendar,
@@ -687,6 +690,30 @@ const JudgeDashboard = ({ activeTab = 'dashboard' }) => {
       {/* ── 4. PROFILE & CHAMBERS DOSSIER TAB ── */}
       {activeTab === 'profile' && (
         <ProfilePage />
+      )}
+
+      {/* ── 5. DOCUMENTS VAULT TAB ── */}
+      {activeTab === 'documents' && (
+        <Documents />
+      )}
+
+      {/* ── 6. COMMUNICATIONS / MESSAGES TAB ── */}
+      {activeTab === 'messages' && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <MessageSquare className="text-[#B69B72]" size={24} />
+            <div>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Bench Communications</h3>
+              <p className="text-xs text-slate-400">Official bilateral messaging with appearing counsel, court staff, and judicial administration.</p>
+            </div>
+          </div>
+          <ChatCenter />
+        </div>
+      )}
+
+      {/* ── 7. NOTIFICATIONS TAB ── */}
+      {activeTab === 'notifications' && (
+        <Notifications />
       )}
 
       {/* ── 5. CASE WORKSPACE MODAL (9 SUB-TABS) ── */}

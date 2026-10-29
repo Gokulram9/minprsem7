@@ -5,6 +5,7 @@ const Lawyer = require('../models/Lawyer');
 const { generateToken, generateRefreshToken } = require('../utils/generateToken');
 const { validateEmail, validatePassword } = require('../utils/validators');
 const { sendEmail } = require('../services/emailService');
+const jwt = require('jsonwebtoken');
 
 const register = async (req, res, next) => {
   try {
@@ -30,7 +31,7 @@ const register = async (req, res, next) => {
     }
     if (!validateEmail(email) || !validatePassword(password)) {
       res.status(400);
-      return next(new Error('Invalid registration data')); 
+      return next(new Error('Invalid registration data: Password must be at least 8 characters with letters, numbers, and symbols')); 
     }
 
     // Force role check: only recognized admin emails can register as Admin
@@ -42,6 +43,9 @@ const register = async (req, res, next) => {
     }
     if (allowedAdminEmails.includes(email.toLowerCase())) {
       assignedRole = 'Admin';
+    } else if (assignedRole === 'Judge' || assignedRole === 'CourtStaff') {
+      res.status(403);
+      return next(new Error('Unauthorized: Judge and Court Staff accounts must be provisioned securely by the Administrator.'));
     }
 
     const existingUser = await User.findOne({ email });
@@ -52,6 +56,7 @@ const register = async (req, res, next) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const emailVerificationToken = crypto.randomBytes(20).toString('hex');
+    const isLawyerRole = assignedRole === 'Lawyer';
     
     const user = await User.create({ 
       name, 
@@ -66,11 +71,12 @@ const register = async (req, res, next) => {
       specialization,
       experienceYears: Number(experienceYears) || 0,
       profileCompleted: true,
+      isVerified: assignedRole === 'Admin' || assignedRole === 'Applicant' || assignedRole === 'User',
       emailVerificationToken
     });
 
-    // If registering as a Lawyer, provision associated Lawyer profile
-    if (assignedRole === 'Lawyer') {
+    // If registering as a Lawyer, provision associated Lawyer profile (pending admin verification)
+    if (isLawyerRole) {
       try {
         const barNumber = barRegistrationNumber || `BAR-${state ? state.slice(0, 2).toUpperCase() : 'IN'}-${Date.now().toString().slice(-6)}`;
         await Lawyer.create({
@@ -84,10 +90,10 @@ const register = async (req, res, next) => {
           state: state || '',
           courtLevel: courtLevel || 'District Court',
           courts: [`${district || 'District'} Court`],
-          verificationStatus: 'Verified',
+          verificationStatus: 'Pending',
           rating: 4.8,
-          totalCases: 12,
-          successRate: 90
+          totalCases: 0,
+          successRate: 85
         });
       } catch (lawyerErr) {
         console.warn('Could not auto-create Lawyer document:', lawyerErr.message);
@@ -113,7 +119,8 @@ const register = async (req, res, next) => {
         state: user.state,
         phone: user.phone,
         address: user.address,
-        location: user.location
+        location: user.location,
+        isVerified: user.isVerified
       },
     });
   } catch (error) {
@@ -177,7 +184,8 @@ const login = async (req, res, next) => {
         state: user.state,
         phone: user.phone,
         address: user.address,
-        location: user.location
+        location: user.location,
+        isVerified: user.isVerified
       }
     });
   } catch (error) {
@@ -191,19 +199,22 @@ const forgotPassword = async (req, res, next) => {
     const user = await User.findOne({ email });
     if (!user) {
       res.status(404);
-      return next(new Error('User not found')); 
+      return next(new Error('User with this email not found')); 
     }
-    const resetToken = crypto.randomBytes(20).toString('hex');
+    const resetToken = crypto.randomBytes(24).toString('hex');
+    user.emailVerificationToken = resetToken;
+    await user.save();
+
     const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:5175'}/reset-password?token=${resetToken}`;
 
-    // In a real application, store the token and expiry in the database.
     await sendEmail({
       to: user.email,
-      subject: 'Reset your password',
-      text: `Reset your password by visiting: ${resetUrl}`,
+      subject: 'Court Portal — Password Reset Request',
+      text: `Reset your portal password by clicking: ${resetUrl}`,
+      html: `<p>Hello ${user.name},</p><p>You requested a password reset for your legal aid portal account.</p><p><a href="${resetUrl}">Click here to reset your password</a></p><p>If you did not request this, please ignore this email.</p>`
     });
 
-    res.json({ message: 'Password reset instructions have been sent to email.' });
+    res.json({ success: true, message: 'Password reset instructions have been dispatched.' });
   } catch (error) {
     next(error);
   }
@@ -212,19 +223,52 @@ const forgotPassword = async (req, res, next) => {
 const resetPassword = async (req, res, next) => {
   try {
     const { token, password } = req.body;
+    if (!token) {
+      res.status(400);
+      return next(new Error('Reset token is required'));
+    }
     if (!validatePassword(password)) {
       res.status(400);
-      return next(new Error('Password must be at least 8 characters')); 
+      return next(new Error('Password must be at least 8 characters with letters, numbers, and symbols')); 
     }
-    // Password reset token validation is mocked for this starter app.
-    const user = await User.findOne({});
+    const user = await User.findOne({ emailVerificationToken: token });
     if (!user) {
-      res.status(404);
-      return next(new Error('Reset token invalid or expired')); 
+      res.status(400);
+      return next(new Error('Reset token is invalid or has expired')); 
     }
     user.password = await bcrypt.hash(password, 10);
+    user.emailVerificationToken = '';
     await user.save();
-    res.json({ message: 'Password reset successfully' });
+    res.json({ success: true, message: 'Password reset successfully. You can now log in.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const changePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      res.status(400);
+      return next(new Error('Current password and new password are required'));
+    }
+    if (newPassword.length < 8) {
+      res.status(400);
+      return next(new Error('New password must be at least 8 characters long'));
+    }
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      res.status(404);
+      return next(new Error('User not found'));
+    }
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      res.status(400);
+      return next(new Error('Current password is incorrect'));
+    }
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+    res.json({ success: true, message: 'Password updated successfully' });
   } catch (error) {
     next(error);
   }
@@ -232,7 +276,8 @@ const resetPassword = async (req, res, next) => {
 
 const getProfile = async (req, res, next) => {
   try {
-    res.json(req.user);
+    const user = await User.findById(req.user._id).select('-password');
+    res.json(user);
   } catch (error) {
     next(error);
   }
@@ -240,15 +285,37 @@ const getProfile = async (req, res, next) => {
 
 const updateProfile = async (req, res, next) => {
   try {
-    const updates = req.body;
-    const user = await User.findByIdAndUpdate(req.user._id, updates, { new: true, runValidators: true }).select('-password');
+    const {
+      name,
+      phone,
+      location,
+      district,
+      state,
+      address,
+      specialization,
+      experienceYears,
+      bio,
+      profileImage
+    } = req.body;
+
+    const allowedUpdates = {};
+    if (name !== undefined) allowedUpdates.name = name;
+    if (phone !== undefined) allowedUpdates.phone = phone;
+    if (location !== undefined) allowedUpdates.location = location;
+    if (district !== undefined) allowedUpdates.district = district;
+    if (state !== undefined) allowedUpdates.state = state;
+    if (address !== undefined) allowedUpdates.address = address;
+    if (specialization !== undefined) allowedUpdates.specialization = specialization;
+    if (experienceYears !== undefined) allowedUpdates.experienceYears = Number(experienceYears) || 0;
+    if (bio !== undefined) allowedUpdates.bio = bio;
+    if (profileImage !== undefined) allowedUpdates.profileImage = profileImage;
+
+    const user = await User.findByIdAndUpdate(req.user._id, allowedUpdates, { new: true, runValidators: true }).select('-password');
     res.json(user);
   } catch (error) {
     next(error);
   }
 };
-
-const jwt = require('jsonwebtoken');
 
 const verifyEmail = async (req, res, next) => {
   try {
@@ -300,4 +367,15 @@ const refresh = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, forgotPassword, resetPassword, getProfile, updateProfile, verifyEmail, logout, refresh };
+module.exports = { 
+  register, 
+  login, 
+  forgotPassword, 
+  resetPassword, 
+  changePassword, 
+  getProfile, 
+  updateProfile, 
+  verifyEmail, 
+  logout, 
+  refresh 
+};

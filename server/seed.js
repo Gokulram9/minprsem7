@@ -1,6 +1,11 @@
+const path = require('path');
+const dotenv = require('dotenv');
+
+dotenv.config({ path: path.resolve(__dirname, '.env') });
+dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
+
 const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
-const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 
 // Models
@@ -18,8 +23,6 @@ const AuditLog = require('./models/AuditLog');
 const CaseParty = require('./models/CaseParty');
 const Conversation = require('./models/Conversation');
 const Message = require('./models/Message');
-
-dotenv.config();
 
 const seed = async () => {
   try {
@@ -46,8 +49,21 @@ const seed = async () => {
     const passwordHash = await bcrypt.hash('Admin@1234', 10);
 
     // 1. Create Admins and Court Staff
+    const SEED_USER_IDS = {
+      admin1: new mongoose.Types.ObjectId('65a000000000000000000001'),
+      adminTest: new mongoose.Types.ObjectId('65a000000000000000000002'),
+      staff1: new mongoose.Types.ObjectId('65a000000000000000000003'),
+      staffTest: new mongoose.Types.ObjectId('65a000000000000000000004'),
+      judge1: new mongoose.Types.ObjectId('65a000000000000000000005'),
+      judge2: new mongoose.Types.ObjectId('65a000000000000000000006'),
+      applicantTest: new mongoose.Types.ObjectId('65a000000000000000000007'),
+      applicantUser1: new mongoose.Types.ObjectId('65a000000000000000000008'),
+      lawyerTest: new mongoose.Types.ObjectId('65a000000000000000000009'),
+    };
+
     console.log('👤 Seeding core user accounts for Theni District Court...');
     const adminUser = await User.create({
+      _id: SEED_USER_IDS.admin1,
       name: 'Gokul Ram S (Admin)',
       email: 'gokulrams.cs23@bitsathy.ac.in',
       password: passwordHash,
@@ -61,6 +77,7 @@ const seed = async () => {
     });
 
     const adminTestUser = await User.create({
+      _id: SEED_USER_IDS.adminTest,
       name: 'System Admin Officer',
       email: 'admin@test.com',
       password: passwordHash,
@@ -74,6 +91,7 @@ const seed = async () => {
     });
 
     const staffUser = await User.create({
+      _id: SEED_USER_IDS.staff1,
       name: 'Registrar M. Selvam (Court Staff)',
       email: 'staff@sevenseas.com',
       password: passwordHash,
@@ -87,6 +105,7 @@ const seed = async () => {
     });
 
     const staffTestUser = await User.create({
+      _id: SEED_USER_IDS.staffTest,
       name: 'Court Registrar Office',
       email: 'staff@test.com',
       password: passwordHash,
@@ -101,6 +120,7 @@ const seed = async () => {
 
     // Primary Judge - Theni District Court
     const judgeUser1 = await User.create({
+      _id: SEED_USER_IDS.judge1,
       name: 'Hon. Justice S. Shanmugam',
       email: 'judge@sevenseas.com',
       password: passwordHash,
@@ -129,6 +149,7 @@ const seed = async () => {
 
     // Secondary Judge - For reassignment testing
     const judgeUser2 = await User.create({
+      _id: SEED_USER_IDS.judge2,
       name: 'Hon. Justice M. Thangavel',
       email: 'judge2@sevenseas.com',
       password: passwordHash,
@@ -171,6 +192,7 @@ const seed = async () => {
     ];
 
     const applicantTestUser = await User.create({
+      _id: SEED_USER_IDS.applicantTest,
       name: 'M. Muthulakshmi (Applicant)',
       email: 'applicant@test.com',
       password: passwordHash,
@@ -629,6 +651,7 @@ const seed = async () => {
     ];
 
     const lawyerTestUser = await User.create({
+      _id: SEED_USER_IDS.lawyerTest,
       name: 'Advocate S. Murugan (Lawyer)',
       email: 'lawyer@test.com',
       password: passwordHash,

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Command, ArrowRight, Shield, FileText, Users, Eye, Sparkles } from 'lucide-react';
+import { Search, Command, ArrowRight, Shield, FileText, Users, Eye, Sparkles, Calendar } from 'lucide-react';
 
 const CommandPalette = () => {
   const [isOpen, setIsOpen] = useState(false);

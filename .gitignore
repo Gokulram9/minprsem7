@@ -1,6 +1,13 @@
 node_modules/
 dist/
+# Environment files (never commit database credentials)
 .env
+.env.local
+.env.*.local
+*.env
+server/.env
+!.env.example
+!server/.env.example
 judgments.db
 uploads/
 *.log

@@ -6,7 +6,7 @@ import {
   Users, Scale, ShieldAlert, FolderOpen, Calendar,
   Sparkles, BarChart2, ChevronLeft, MessageSquare, User,
   Home, LogOut, Settings, ArrowUpRight, Zap, Shield,
-  ChevronDown, Search, CreditCard, Gavel
+  ChevronDown, Search, CreditCard, Gavel, CheckCircle2
 } from 'lucide-react';
 
 const Sidebar = ({ collapsed, onToggle }) => {
@@ -33,12 +33,13 @@ const Sidebar = ({ collapsed, onToggle }) => {
   ];
 
   const courtStaffMenuItems = [
-    { to: '/dashboard', end: true,  label: 'Dashboard',       icon: Home,          group: 'overview' },
-    { to: '/dashboard/cases',       label: 'Case Dockets',    icon: FolderOpen,    group: 'management' },
-    { to: '/dashboard/scheduling',  label: 'Hearings Schedule', icon: Calendar,    group: 'management' },
-    { to: '/dashboard/messages',    label: 'Communications',  icon: MessageSquare, group: 'workspace' },
-    { to: '/dashboard/documents',   label: 'Documents',       icon: FolderOpen,    group: 'workspace' },
-    { to: '/dashboard/profile',     label: 'Profile',         icon: User,          group: 'account' },
+    { to: '/dashboard', end: true,  label: 'Dashboard',           icon: Home,          group: 'overview' },
+    { to: '/dashboard/pending-approvals', label: 'Docket Confirmation', icon: CheckCircle2, group: 'management' },
+    { to: '/dashboard/cases',       label: 'Case Dockets',        icon: FolderOpen,    group: 'management' },
+    { to: '/dashboard/scheduling',  label: 'Hearings Schedule',   icon: Calendar,      group: 'management' },
+    { to: '/dashboard/messages',    label: 'Communications',      icon: MessageSquare, group: 'workspace' },
+    { to: '/dashboard/documents',   label: 'Documents',           icon: FolderOpen,    group: 'workspace' },
+    { to: '/dashboard/profile',     label: 'Profile',             icon: User,          group: 'account' },
   ];
 
   const userMenuItems = [
@@ -72,6 +73,7 @@ const Sidebar = ({ collapsed, onToggle }) => {
     { to: '/dashboard/todays-hearings',label: "Today's Bench", icon: Gavel,          group: 'workspace' },
     { to: '/dashboard/schedule',     label: 'Calendar',       icon: Calendar,       group: 'workspace' },
     { to: '/dashboard/documents',    label: 'Documents',      icon: FolderOpen,     group: 'workspace' },
+    { to: '/dashboard/messages',     label: 'Communications',  icon: MessageSquare,  group: 'workspace' },
     { to: '/dashboard/judgments',    label: 'Precedents',     icon: Scale,          group: 'intelligence' },
     { to: '/dashboard/profile',      label: 'Chambers Profile', icon: User,         group: 'account' },
   ];

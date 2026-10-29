@@ -1,10 +1,17 @@
-const http = require('http');
 const path = require('path');
+const dotenv = require('dotenv');
+
+// Load environment variables early from server/.env or root .env
+dotenv.config({ path: path.resolve(__dirname, '.env') });
+dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
+
+const http = require('http');
 const express = require('express');
+const mongoose = require('mongoose');
+const axios = require('axios');
 const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
-const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 const { initializeSocket } = require('./config/socket');
 const authRoutes = require('./routes/authRoutes');
@@ -29,8 +36,6 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
 const logger = require('./utils/logger');
 
-dotenv.config();
-
 const app = express();
 const server = http.createServer(app);
 initializeSocket(server);
@@ -43,8 +48,34 @@ app.use(morgan(morganFormat, {
   }
 }));
 
-app.use(helmet());
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5175' }));
+app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:5175',
+  'http://localhost:5176',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
+  'http://127.0.0.1:5175',
+  'http://127.0.0.1:5176',
+  'http://127.0.0.1:3000',
+  process.env.CLIENT_URL,
+].filter(Boolean);
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    const isLocalhost = /^http:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$/.test(origin);
+    if (process.env.NODE_ENV !== 'production' || allowedOrigins.includes(origin) || isLocalhost) {
+      return callback(null, origin);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 const rootUploads = path.join(__dirname, '..', 'uploads');
@@ -79,9 +110,49 @@ app.use('/api/lawyers', lawyerRoutes);
 app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/cases', casePartyRoutes);
 app.use('/api/judge', judgeRoutes);
+app.use('/api/judges', judgeRoutes);
 
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', message: 'Legal Aid Portal API is running.' });
+app.get('/api/health', async (_req, res) => {
+  const dbStateMap = {
+    0: 'disconnected',
+    1: 'connected',
+    2: 'connecting',
+    3: 'disconnecting',
+  };
+  const isDbReady = mongoose.connection.readyState === 1;
+  const dbState = dbStateMap[mongoose.connection.readyState] || 'unknown';
+
+  let aiStatus = 'unreachable';
+  try {
+    const aiUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+    const aiResp = await axios.get(`${aiUrl}/health`, { timeout: 1500 });
+    if (aiResp.status === 200) aiStatus = 'connected';
+  } catch (e) {
+    aiStatus = 'offline';
+  }
+
+  const emailConfigured = Boolean(process.env.SMTP_HOST && process.env.SMTP_USER);
+
+  res.json({
+    status: isDbReady ? 'healthy' : 'degraded',
+    service: 'Court Case Allocation & Legal Aid Management Portal',
+    timestamp: new Date().toISOString(),
+    uptimeSeconds: Math.round(process.uptime()),
+    database: {
+      status: dbState,
+      connected: isDbReady,
+      name: mongoose.connection.name || 'court_case_db',
+      clusterType: mongoose.connection.host ? (mongoose.connection.host.includes('mongodb.net') ? 'MongoDB Atlas Cluster' : 'Local In-Memory MongoDB') : 'unknown'
+    },
+    aiRecommender: {
+      status: aiStatus,
+      endpoint: (process.env.AI_SERVICE_URL || 'http://localhost:8000')
+    },
+    emailService: {
+      status: emailConfigured ? 'smtp_configured' : 'simulation_mode',
+      from: process.env.SMTP_FROM || 'no-reply@legalaid.gov'
+    }
+  });
 });
 
 if (process.env.NODE_ENV === 'production') {
@@ -124,7 +195,9 @@ const startServer = async () => {
       }, 12 * 60 * 60 * 1000); // 12 hrs
     });
   } catch (error) {
-    console.error('Failed to start server:', error);
+    const errorMsg = error?.message || String(error || '');
+    const safeMsg = errorMsg.replace(/\/\/(.*?):(.*?)@/g, '//' + '$1:****@');
+    console.error('❌ Failed to start server:', safeMsg);
     process.exit(1);
   }
 };

@@ -8,17 +8,22 @@ const protect = async (req, res, next) => {
     try {
       token = req.headers.authorization.split(' ')[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      
       req.user = await User.findById(decoded.id).select('-password');
-      next();
+      if (!req.user) {
+        res.status(401);
+        return next(new Error('Session invalid: User account not found in database. Please log in again.'));
+      }
+      return next();
     } catch (error) {
       res.status(401);
-      return next(new Error('Not authorized, token failed')); 
+      return next(new Error('Session expired or invalid authentication token. Please log in again.')); 
     }
   }
 
   if (!token) {
     res.status(401);
-    return next(new Error('Not authorized, no token')); 
+    return next(new Error('Authentication required: Please log in to perform this action.')); 
   }
 };
 

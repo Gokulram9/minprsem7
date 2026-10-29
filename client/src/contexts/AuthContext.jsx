@@ -9,8 +9,29 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const storedUser = localStorage.getItem('legalAidUser');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    const storedToken = localStorage.getItem('legalAidToken');
+
+    if (storedUser && storedToken) {
+      try {
+        setUser(JSON.parse(storedUser));
+        // Verify token with backend to ensure session is genuinely active
+        api.get('/auth/profile').then(res => {
+          if (res.data?.user || res.data) {
+            const freshUser = res.data.user || res.data;
+            setUser(freshUser);
+            localStorage.setItem('legalAidUser', JSON.stringify(freshUser));
+          }
+        }).catch(err => {
+          if (err.response?.status === 401) {
+            console.warn('Stored session is invalid or user was reseeded. Purging stale credentials.');
+            localStorage.removeItem('legalAidToken');
+            localStorage.removeItem('legalAidUser');
+            setUser(null);
+          }
+        });
+      } catch (e) {
+        localStorage.removeItem('legalAidUser');
+      }
     }
     setLoading(false);
   }, []);

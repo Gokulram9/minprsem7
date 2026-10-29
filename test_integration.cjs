@@ -179,7 +179,7 @@ async function runTests() {
 
   // Fetch applications
   const allApps = await admAxios.get('/applications');
-  const targetApp = allApps.data[0];
+  const targetApp = allApps.data.find(a => (a.applicant?._id || a.applicant)?.toString() === applicantUser._id.toString()) || allApps.data[0];
 
   if (!targetApp) {
     throw new Error('No applications available to assign');

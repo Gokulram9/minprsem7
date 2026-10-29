@@ -30,7 +30,8 @@ import {
   FolderSync,
   Gavel,
   Compass,
-  ChevronDown
+  ChevronDown,
+  MessageSquare
 } from 'lucide-react';
 
 export const CASE_CATALOG = [
@@ -1353,19 +1354,25 @@ export default function AiLawyerRecommender({
                     </div>
 
                     {isChosenThisLawyer ? (
-                      <button
-                        disabled
-                        className="text-xs py-2 px-4 rounded-xl font-bold bg-[#B69B72]/20 text-[#8A6F46] dark:text-[#D9C7A5] border border-[#B69B72]/40 flex items-center gap-1.5 cursor-default"
-                      >
-                        <Clock size={13} className="animate-pulse" /> Chosen (Pending)
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs py-2 px-3 rounded-xl font-bold bg-[#B69B72]/20 text-[#8A6F46] dark:text-[#D9C7A5] border border-[#B69B72]/40 flex items-center gap-1.5 cursor-default">
+                          <Clock size={13} className="animate-pulse" /> Chosen (Pending)
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => navigate && navigate(`/dashboard/messages?lawyerId=${lawyer.userId || lawyer.lawyerId || lawyer.id}`)}
+                          className="text-xs py-2 px-3.5 rounded-xl font-bold bg-[#202A3B] dark:bg-slate-800 text-[#D9C7A5] hover:text-white border border-[#B69B72]/40 hover:border-[#B69B72] transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+                        >
+                          <MessageSquare size={13} className="text-[#B69B72]" /> Message Advocate
+                        </button>
+                      </div>
                     ) : isAssignedThisLawyer ? (
                       <button
                         type="button"
-                        onClick={() => navigate('/dashboard/messages')}
+                        onClick={() => navigate && navigate(`/dashboard/messages?lawyerId=${lawyer.userId || lawyer.lawyerId || lawyer.id}`)}
                         className="text-xs py-2 px-4 rounded-xl font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition flex items-center gap-1.5 shadow-md shadow-emerald-600/20 cursor-pointer"
                       >
-                        <CheckCircle2 size={13} /> Active Counsel (Message)
+                        <MessageSquare size={13} /> Active Counsel (Message)
                       </button>
                     ) : (
                       <button

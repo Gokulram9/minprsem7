@@ -92,6 +92,29 @@ const validateCommunicationPermission = async (sender, recipientId, caseId = nul
     return { allowed: true, recipient, type: 'Applicant-Lawyer' };
   }
 
+  // Judge communications (with Admin, CourtStaff, Lawyer, other Judges, Litigants)
+  if (
+    (senderRole === 'Judge' && ['Admin', 'CourtStaff', 'Lawyer', 'Judge', 'Applicant'].includes(recipientRole)) ||
+    (recipientRole === 'Judge' && ['Admin', 'CourtStaff', 'Lawyer', 'Judge', 'Applicant'].includes(senderRole))
+  ) {
+    return { 
+      allowed: true, 
+      recipient, 
+      caseId: caseId || undefined, 
+      type: senderRole === 'Judge' ? `Judge-${recipientRole}` : `${senderRole}-Judge` 
+    };
+  }
+
+  // Lawyer <-> Lawyer communication (collaboration / consultation)
+  if (senderRole === 'Lawyer' && recipientRole === 'Lawyer') {
+    return { allowed: true, recipient, type: 'Lawyer-Lawyer' };
+  }
+
+  // CourtStaff <-> CourtStaff communication
+  if (senderRole === 'CourtStaff' && recipientRole === 'CourtStaff') {
+    return { allowed: true, recipient, type: 'Staff-Staff' };
+  }
+
   // Otherwise, deny unauthorized cross-role or client-to-client messaging
   return { 
     allowed: false, 
@@ -120,22 +143,26 @@ const getConversations = async (req, res, next) => {
   try {
     const userId = req.user._id;
 
-    // First ensure that any assigned case between this user and a lawyer/applicant has an established conversation
+    // First ensure that any assigned or chosen advocate case between this user and a lawyer/applicant has an established conversation
     const userRole = req.user.role === 'User' ? 'Applicant' : req.user.role;
     if (userRole === 'Applicant') {
       const assignedApps = await Application.find({ 
         applicant: userId, 
-        assignedLawyer: { $exists: true, $ne: null } 
+        $or: [
+          { assignedLawyer: { $exists: true, $ne: null } },
+          { chosenLawyer: { $exists: true, $ne: null } }
+        ]
       });
       for (const app of assignedApps) {
-        if (app.assignedLawyer) {
+        const targetLawyer = app.assignedLawyer || app.chosenLawyer;
+        if (targetLawyer) {
           const exists = await Conversation.findOne({
-            participants: { $all: [userId, app.assignedLawyer] },
+            participants: { $all: [userId, targetLawyer] },
             caseId: app._id
           });
           if (!exists) {
             await Conversation.create({
-              participants: [userId, app.assignedLawyer],
+              participants: [userId, targetLawyer],
               caseId: app._id,
               conversationType: 'Applicant-Lawyer',
               title: `Case: ${app.caseTitle}`,
@@ -148,7 +175,10 @@ const getConversations = async (req, res, next) => {
       }
     } else if (userRole === 'Lawyer') {
       const assignedApps = await Application.find({ 
-        assignedLawyer: userId,
+        $or: [
+          { assignedLawyer: userId },
+          { chosenLawyer: userId }
+        ],
         applicant: { $exists: true, $ne: null } 
       });
       for (const app of assignedApps) {
@@ -180,8 +210,8 @@ const getConversations = async (req, res, next) => {
 
     const formatted = conversations.map(c => {
       const otherParticipant = c.participants.find(
-        p => p._id.toString() !== userId.toString()
-      ) || c.participants[0] || {};
+        p => (p?._id ? p._id.toString() : p?.toString()) !== userId.toString()
+      ) || (c.participants[0] && typeof c.participants[0] === 'object' ? c.participants[0] : {});
 
       let unread = 0;
       if (c.unreadCounts) {
@@ -195,17 +225,19 @@ const getConversations = async (req, res, next) => {
       return {
         _id: c._id,
         id: c._id,
-        title: c.title || otherParticipant.name || 'Conversation',
+        title: c.title || otherParticipant.name || 'Legal Aid Communication',
         conversationType: c.conversationType,
         case: c.caseId,
         caseId: c.caseId?._id || c.caseId,
         caseTitle: c.caseId?.caseTitle || '',
         contact: otherParticipant,
         otherParticipant,
+        participants: c.participants,
         lastMessage: c.lastMessage,
         lastMessageSender: c.lastMessageSender,
         lastMessageAt: c.lastMessageAt || c.updatedAt,
         unreadCount: unread,
+        unreadCounts: c.unreadCounts,
         updatedAt: c.updatedAt,
         createdAt: c.createdAt
       };
@@ -290,13 +322,14 @@ const sendMessage = async (req, res, next) => {
       text, 
       message: messageText, 
       attachments = [], 
-      messageType = 'text' 
+      messageType = 'text',
+      precedent = null 
     } = req.body;
 
     const actualText = (text || messageText || '').trim();
-    if (!actualText && (!attachments || attachments.length === 0)) {
+    if (!actualText && (!attachments || attachments.length === 0) && !precedent) {
       res.status(400);
-      return next(new Error('Message content or attachment is required.'));
+      return next(new Error('Message content, document attachment, or precedent citation is required.'));
     }
 
     let conversation = null;
@@ -349,7 +382,7 @@ const sendMessage = async (req, res, next) => {
           caseId: targetCaseId || undefined,
           conversationType: permCheck.type || 'Direct',
           title: title || `Chat: ${req.user.name} & ${permCheck.recipient?.name || 'User'}`,
-          lastMessage: actualText || '[Attachment]',
+          lastMessage: actualText || (precedent ? `[Precedent] ${precedent.title}` : '[Attachment]'),
           lastMessageSender: req.user._id,
           lastMessageAt: new Date()
         });
@@ -362,9 +395,10 @@ const sendMessage = async (req, res, next) => {
       sender: req.user._id,
       receiver: targetReceiverId,
       application: conversation.caseId || targetCaseId || undefined,
-      text: actualText || (attachments.length > 0 ? `Shared ${attachments[0].name || 'Document'}` : 'Message'),
+      text: actualText || (precedent ? `Legal Precedent: ${precedent.title}` : attachments.length > 0 ? `Shared ${attachments[0].name || 'Document'}` : 'Message'),
       attachments: attachments || [],
-      messageType: attachments.length > 0 && !actualText ? 'document' : messageType,
+      precedent: precedent || undefined,
+      messageType: precedent ? 'precedent' : (attachments.length > 0 && !actualText ? 'document' : messageType),
       read: false,
       readBy: [req.user._id]
     });
@@ -375,7 +409,7 @@ const sendMessage = async (req, res, next) => {
       .populate('application', 'caseId caseTitle');
 
     // Update conversation metadata
-    conversation.lastMessage = actualText || (attachments.length > 0 ? `[Document] ${attachments[0].name}` : 'Message');
+    conversation.lastMessage = actualText || (precedent ? `[Precedent] ${precedent.title}` : attachments.length > 0 ? `[Document] ${attachments[0].name}` : 'Message');
     conversation.lastMessageSender = req.user._id;
     conversation.lastMessageAt = new Date();
 
@@ -403,7 +437,7 @@ const sendMessage = async (req, res, next) => {
         application: conversation.caseId || targetCaseId || undefined,
         conversation: conversation._id,
         title: `Message from ${req.user.name}`,
-        message: actualText.length > 80 ? actualText.substring(0, 80) + '...' : actualText,
+        message: `${req.user.name}: ${actualText.length > 80 ? actualText.substring(0, 80) + '...' : actualText}`,
         category: 'Message',
         metadata: {
           conversationId: conversation._id,
@@ -563,93 +597,181 @@ const getAvailableContacts = async (req, res, next) => {
   try {
     const user = req.user;
     const userRole = user.role === 'User' ? 'Applicant' : user.role;
-    let contacts = [];
+    const contactMap = new Map(); // Keyed by user._id to prevent duplicates
+
+    const addContact = (u, category, relation, caseId = null, caseTitle = '') => {
+      if (!u || !u._id) return;
+      const uid = u._id.toString();
+      if (uid === user._id.toString()) return; // Don't list self
+
+      if (!contactMap.has(uid)) {
+        contactMap.set(uid, {
+          _id: uid,
+          id: uid,
+          name: u.name || 'User',
+          email: u.email || '',
+          phone: u.phone || '',
+          role: u.role === 'User' ? 'Applicant' : (u.role || 'Member'),
+          category, // 'Advocates' | 'Clients' | 'Court Staff' | 'Admin'
+          relation,
+          specialization: u.specialization || '',
+          location: u.location || u.district || '',
+          profileImage: u.profileImage || null,
+          caseId: caseId ? caseId.toString() : undefined,
+          caseTitle: caseTitle || undefined,
+          user: u
+        });
+      }
+    };
 
     if (userRole === 'Applicant') {
-      // 1. Assigned Lawyers from applicant's cases
+      // 1. Assigned & Requested Lawyers from applicant's cases
       const myApps = await Application.find({ applicant: user._id })
         .populate('assignedLawyer', 'name email role phone location specialization profileImage')
         .populate('chosenLawyer', 'name email role phone location specialization profileImage');
       
-      const lawyerMap = new Map();
       myApps.forEach(a => {
         if (a.assignedLawyer) {
-          lawyerMap.set(a.assignedLawyer._id.toString(), {
-            user: a.assignedLawyer,
-            caseId: a._id,
-            caseTitle: a.caseTitle,
-            relation: 'Assigned Advocate'
-          });
+          addContact(a.assignedLawyer, 'Advocates', 'Assigned Advocate', a._id, a.caseTitle);
         } else if (a.chosenLawyer) {
-          lawyerMap.set(a.chosenLawyer._id.toString(), {
-            user: a.chosenLawyer,
-            caseId: a._id,
-            caseTitle: a.caseTitle,
-            relation: 'Requested Advocate'
-          });
+          addContact(a.chosenLawyer, 'Advocates', 'Requested Advocate', a._id, a.caseTitle);
         }
       });
-      contacts.push(...Array.from(lawyerMap.values()));
 
-      // 2. Court Administration Desk (Admin)
-      const admins = await User.find({ role: 'Admin' }).select('name email role phone profileImage');
-      admins.forEach(adm => {
-        contacts.push({
-          user: adm,
-          relation: 'Legal Aid Administration'
-        });
+      // 2. All Panel Advocates (so applicant can message/consult any panel lawyer)
+      const allLawyers = await User.find({ role: 'Lawyer' })
+        .select('name email role phone location specialization profileImage')
+        .limit(30);
+      allLawyers.forEach(l => {
+        addContact(l, 'Advocates', 'Panel Legal Aid Advocate');
       });
+
+      // 3. Court Staff
+      const courtStaff = await User.find({ role: 'CourtStaff' })
+        .select('name email role phone profileImage');
+      courtStaff.forEach(cs => {
+        addContact(cs, 'Court Staff', 'Court Registry & Filing Desk');
+      });
+
+      // 4. Admin
+      const admins = await User.find({ role: 'Admin' })
+        .select('name email role phone profileImage');
+      admins.forEach(adm => {
+        addContact(adm, 'Admin', 'Legal Aid Administration Desk');
+      });
+
     } else if (userRole === 'Lawyer') {
-      // 1. Assigned Clients (Applicants)
+      // 1. Assigned Clients (Applicants) from cases
       const assignedApps = await Application.find({ 
         $or: [{ assignedLawyer: user._id }, { chosenLawyer: user._id }] 
       }).populate('applicant', 'name email role phone location occupation profileImage');
 
-      const clientMap = new Map();
       assignedApps.forEach(a => {
         if (a.applicant) {
-          clientMap.set(a.applicant._id.toString(), {
-            user: a.applicant,
-            caseId: a._id,
-            caseTitle: a.caseTitle,
-            relation: a.assignedLawyer?.toString() === user._id.toString() ? 'Assigned Client' : 'Incoming Representation Request'
-          });
+          const relation = a.assignedLawyer?.toString() === user._id.toString() 
+            ? 'Assigned Client' 
+            : 'Incoming Representation Request';
+          addContact(a.applicant, 'Clients', relation, a._id, a.caseTitle);
         }
       });
-      contacts.push(...Array.from(clientMap.values()));
 
-      // 2. Court Staff & Admin
+      // 2. Other Portal Applicants / Clients
+      const allApplicants = await User.find({ role: { $in: ['User', 'Applicant'] }, _id: { $ne: user._id } })
+        .select('name email role phone location occupation profileImage')
+        .limit(30);
+      allApplicants.forEach(app => {
+        addContact(app, 'Clients', 'Legal Aid Applicant');
+      });
+
+      // 3. Colleague Panel Advocates
+      const colleagueLawyers = await User.find({ role: 'Lawyer', _id: { $ne: user._id } })
+        .select('name email role phone location specialization profileImage')
+        .limit(20);
+      colleagueLawyers.forEach(l => {
+        addContact(l, 'Advocates', 'Panel Advocate Colleague');
+      });
+
+      // 4. Court Staff & Admin
+      const staffAndAdmins = await User.find({ role: { $in: ['CourtStaff', 'Admin', 'Judge'] } })
+        .select('name email role phone profileImage specialization');
+      staffAndAdmins.forEach(u => {
+        addContact(
+          u, 
+          u.role === 'CourtStaff' ? 'Court Staff' : (u.role === 'Judge' ? 'Court Staff' : 'Admin'), 
+          u.role === 'CourtStaff' ? 'Court Registrar / Staff' : (u.role === 'Judge' ? 'Presiding Bench / Judge' : 'Court Administration')
+        );
+      });
+
+    } else if (userRole === 'CourtStaff') {
+      // 1. All Clients / Applicants
+      const clients = await User.find({ role: { $in: ['User', 'Applicant'] } })
+        .select('name email role phone profileImage')
+        .limit(30);
+      clients.forEach(c => addContact(c, 'Clients', 'Case Litigant / Applicant'));
+
+      // 2. Lawyers
+      const allLawyers = await User.find({ role: 'Lawyer' })
+        .select('name email role phone profileImage specialization');
+      allLawyers.forEach(u => addContact(u, 'Advocates', 'Panel Advocate'));
+
+      // 3. Admins & Other Staff
+      const adminsAndStaff = await User.find({ role: { $in: ['CourtStaff', 'Admin'] }, _id: { $ne: user._id } })
+        .select('name email role phone profileImage');
+      adminsAndStaff.forEach(u => addContact(
+        u, 
+        u.role === 'Admin' ? 'Admin' : 'Court Staff', 
+        u.role === 'Admin' ? 'Court Administrator' : 'Registry Colleague'
+      ));
+
+    } else if (userRole === 'Admin') {
+      // Admin can message anyone
+      const allUsers = await User.find({ _id: { $ne: user._id } })
+        .select('name email role phone profileImage specialization')
+        .limit(60);
+      allUsers.forEach(u => {
+        const cat = u.role === 'Lawyer' ? 'Advocates' : (u.role === 'CourtStaff' || u.role === 'Judge' ? 'Court Staff' : (u.role === 'Admin' ? 'Admin' : 'Clients'));
+        addContact(u, cat, `${u.role}`);
+      });
+    } else if (userRole === 'Judge') {
+      // 1. Presiding case advocates and applicants
+      const presidingApps = await Application.find({
+        $or: [{ assignedJudge: user._id }, { judge: user._id }]
+      })
+      .populate('assignedLawyer', 'name email role phone location specialization profileImage')
+      .populate('chosenLawyer', 'name email role phone location specialization profileImage')
+      .populate('applicant', 'name email role phone location occupation profileImage');
+
+      presidingApps.forEach(a => {
+        if (a.assignedLawyer) {
+          addContact(a.assignedLawyer, 'Advocates', 'Appearing Advocate', a._id, a.caseTitle);
+        } else if (a.chosenLawyer) {
+          addContact(a.chosenLawyer, 'Advocates', 'Requested Advocate', a._id, a.caseTitle);
+        }
+        if (a.applicant) {
+          addContact(a.applicant, 'Clients', 'Litigant / Petitioner', a._id, a.caseTitle);
+        }
+      });
+
+      // 2. All Panel Advocates for summons / inquiries
+      const panelLawyers = await User.find({ role: 'Lawyer' })
+        .select('name email role phone location specialization profileImage')
+        .limit(25);
+      panelLawyers.forEach(l => addContact(l, 'Advocates', 'Panel Advocate'));
+
+      // 3. Court Staff & Admin
       const staffAndAdmins = await User.find({ role: { $in: ['CourtStaff', 'Admin'] } })
         .select('name email role phone profileImage');
       staffAndAdmins.forEach(u => {
-        contacts.push({
-          user: u,
-          relation: u.role === 'CourtStaff' ? 'Court Registrar / Staff' : 'Court Administration'
-        });
+        addContact(u, u.role === 'CourtStaff' ? 'Court Staff' : 'Admin', u.role === 'CourtStaff' ? 'Court Registrar' : 'Administration');
       });
-    } else if (userRole === 'CourtStaff') {
-      // Lawyers and Admins
-      const allLawyersAndAdmins = await User.find({ role: { $in: ['Lawyer', 'Admin'] } })
+
+      // 4. Fellow Judges
+      const otherJudges = await User.find({ role: 'Judge', _id: { $ne: user._id } })
         .select('name email role phone profileImage specialization');
-      allLawyersAndAdmins.forEach(u => {
-        contacts.push({
-          user: u,
-          relation: u.role === 'Lawyer' ? 'Panel Advocate' : 'Court Administrator'
-        });
-      });
-    } else if (userRole === 'Admin') {
-      // Admin can message any active User, Lawyer, or Staff
-      const allUsers = await User.find({ _id: { $ne: user._id } })
-        .select('name email role phone profileImage specialization')
-        .limit(50);
-      allUsers.forEach(u => {
-        contacts.push({
-          user: u,
-          relation: `${u.role}`
-        });
-      });
+      otherJudges.forEach(j => addContact(j, 'Court Staff', 'Bench Colleague'));
     }
 
+    const contacts = Array.from(contactMap.values());
     res.json({ success: true, data: contacts });
   } catch (error) {
     next(error);

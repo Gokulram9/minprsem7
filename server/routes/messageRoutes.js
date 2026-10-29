@@ -39,14 +39,16 @@ router.post('/upload', protect, upload.single('file'), (req, res, next) => {
       return next(new Error('No file uploaded'));
     }
     const fileUrl = `/uploads/${req.file.filename}`;
+    const attachment = {
+      name: req.file.originalname,
+      url: fileUrl,
+      fileType: req.file.mimetype,
+      size: req.file.size
+    };
     res.json({
       success: true,
-      attachment: {
-        name: req.file.originalname,
-        url: fileUrl,
-        fileType: req.file.mimetype,
-        size: req.file.size
-      }
+      data: attachment,
+      attachment
     });
   } catch (err) {
     next(err);

@@ -143,6 +143,8 @@ const Dashboard = () => {
             <Route path="judgments"     element={<JudgmentsSearch />} />
             
             {/* Admin & Court Staff Management Routes */}
+            <Route path="pending-approvals" element={user.role === 'CourtStaff' || user.role === 'Admin' ? <StaffDashboard activeTab="confirmation" /> : <Navigate to="/" replace />} />
+            <Route path="confirmation"      element={user.role === 'CourtStaff' || user.role === 'Admin' ? <StaffDashboard activeTab="confirmation" /> : <Navigate to="/" replace />} />
             <Route path="users"         element={user.role === 'Admin' ? <AdminDashboard activeTab="users" /> : <Navigate to="/" replace />} />
             <Route path="lawyers"       element={user.role === 'Admin' ? <AdminDashboard activeTab="lawyers" /> : <Navigate to="/" replace />} />
             <Route path="judges"        element={user.role === 'Admin' ? <AdminDashboard activeTab="judges" /> : <Navigate to="/" replace />} />
@@ -160,7 +162,7 @@ const Dashboard = () => {
             <Route path="timeline"      element={<Navigate to="../schedule" replace />} />
             <Route path="schedule-timeline" element={<Navigate to="../schedule" replace />} />
             <Route path="documents"     element={user.role === 'Admin' ? <AdminDashboard activeTab="documents" /> : (user.role === 'CourtStaff' ? <StaffDashboard activeTab="documents" /> : (user.role === 'Lawyer' ? <LawyerDashboard activeTab="documents" /> : (user.role === 'Judge' ? <JudgeDashboard activeTab="documents" /> : <ApplicantDashboard activeTab="documents" />)))} />
-            <Route path="messages"      element={user.role === 'Admin' ? <AdminDashboard activeTab="messages" /> : (user.role === 'CourtStaff' ? <StaffDashboard activeTab="messages" /> : (user.role === 'Lawyer' ? <LawyerDashboard activeTab="messages" /> : <ApplicantDashboard activeTab="messages" />))} />
+            <Route path="messages"      element={user.role === 'Admin' ? <AdminDashboard activeTab="messages" /> : (user.role === 'CourtStaff' ? <StaffDashboard activeTab="messages" /> : (user.role === 'Lawyer' ? <LawyerDashboard activeTab="messages" /> : (user.role === 'Judge' ? <JudgeDashboard activeTab="messages" /> : <ApplicantDashboard activeTab="messages" />)))} />
             <Route path="notifications" element={user.role === 'Admin' ? <AdminDashboard activeTab="notifications" /> : (user.role === 'Lawyer' ? <LawyerDashboard activeTab="notifications" /> : (user.role === 'Judge' ? <JudgeDashboard activeTab="notifications" /> : <ApplicantDashboard activeTab="notifications" />))} />
             <Route path="fees"          element={user.role === 'Lawyer' ? <LawyerDashboard activeTab="fees" /> : <ApplicantDashboard activeTab="fees" />} />
             <Route path="feedback"      element={<Navigate to="../profile" replace />} />

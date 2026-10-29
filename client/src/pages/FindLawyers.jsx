@@ -1,5 +1,7 @@
 import { useMemo, useState, useContext } from 'react';
 import { Link } from 'react-router-dom';
+import { useEffect } from 'react';
+import axios from '../api/axios';
 import { AuthContext } from '../contexts/AuthContext';
 import {
   Search, Star, CheckCircle, Heart, Scale, X,
@@ -28,9 +30,43 @@ const FindLawyers = () => {
   const [compareList, setCompareList] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
+  const [dbLawyers, setDbLawyers] = useState([]);
+
+  useEffect(() => {
+    const fetchLawyers = async () => {
+      try {
+        const res = await axios.get('/lawyers');
+        if (Array.isArray(res.data?.data) && res.data.data.length > 0) {
+          setDbLawyers(res.data.data.map(l => ({
+            id: l._id,
+            _id: l._id,
+            name: l.fullName.startsWith('Advocate') ? l.fullName : `Advocate ${l.fullName}`,
+            specialization: (l.specializations && l.specializations[0]) || l.specialization || 'General Practice',
+            practiceAreas: l.practiceAreas || l.specializations || [],
+            location: l.location || `${l.district || 'Theni'}, ${l.state || 'Tamil Nadu'}`,
+            district: l.district || 'Theni',
+            courts: l.courts || ['District Court, Theni'],
+            experience: l.experience || 8,
+            education: l.education || 'LL.B',
+            rating: l.rating || 4.8,
+            reviews: l.reviewCount || 45,
+            casesWon: l.completedCases || 40,
+            successRate: l.successRate || 90,
+            fee: l.consultationFee || 100,
+            bio: l.bio || `${l.experience || 8} years of verified courtroom practice in ${l.location || 'Theni'}.`,
+            image: l.profileImage || null
+          })));
+        }
+      } catch (err) {
+        console.warn('Could not load lawyers from API:', err);
+      }
+    };
+    fetchLawyers();
+  }, []);
 
   const filteredLawyers = useMemo(() => {
-    let list = lawyers.map((lawyer, i) => {
+    const lawyerSource = dbLawyers.length > 0 ? dbLawyers : lawyers;
+    let list = lawyerSource.map((lawyer, i) => {
       let matchScore = 97;
       if (lawyer.experience < 12) matchScore -= 4;
       if (lawyer.fee > 130) matchScore -= 3;

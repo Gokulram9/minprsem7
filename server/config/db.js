@@ -1,63 +1,77 @@
+const path = require('path');
+const dotenv = require('dotenv');
 const mongoose = require('mongoose');
-const { MongoMemoryServer } = require('mongodb-memory-server');
-const net = require('net');
+
+// Ensure environment variables are loaded from server/.env or root .env
+dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
+dotenv.config({ path: path.resolve(__dirname, '..', '..', '.env') });
 
 let mongod = null;
 
-const checkMongoRunning = (port = 27017, host = '127.0.0.1') => {
-  return new Promise((resolve) => {
-    const socket = new net.Socket();
-    socket.setTimeout(1000);
-    socket.once('connect', () => {
-      socket.destroy();
-      resolve(true);
-    });
-    socket.once('timeout', () => {
-      socket.destroy();
-      resolve(false);
-    });
-    socket.once('error', () => {
-      socket.destroy();
-      resolve(false);
-    });
-    socket.connect(port, host);
-  });
+/**
+ * Strips password and sensitive credentials from MongoDB URIs for safe logging
+ */
+const sanitizeUri = (uri) => {
+  if (!uri || typeof uri !== 'string') return '';
+  return uri.replace(/\/\/(.*?):(.*?)@/, '//$1:****@');
 };
 
+/**
+ * Strips password and sensitive credentials from error messages
+ */
+const sanitizeError = (err) => {
+  if (!err) return '';
+  const msg = err.message || String(err);
+  return msg.replace(/\/\/(.*?):(.*?)@/g, '//$1:****@');
+};
+
+/**
+ * Connect to MongoDB database
+ * Defaults to court_case_db as requested
+ */
 const connectDB = async () => {
+  const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI;
+
+  if (mongoUri) {
+    try {
+      const safeUri = sanitizeUri(mongoUri);
+      console.log(`📡 Connecting to MongoDB Atlas (${safeUri})...`);
+
+      const conn = await mongoose.connect(mongoUri, {
+        dbName: 'court_case_db',
+        serverSelectionTimeoutMS: 5000,
+      });
+
+      console.log(`✅ MongoDB connected successfully: ${conn.connection.host} (database: ${conn.connection.name})`);
+      return conn;
+    } catch (error) {
+      console.warn('⚠️  MongoDB Atlas cluster unreachable (IP whitelist or network filter detected).');
+      console.warn('   Atlas Error:', sanitizeError(error));
+      console.warn('   👉 To connect directly to Atlas: Open MongoDB Atlas -> Network Access -> Add Current IP Address (or 0.0.0.0/0).');
+      
+      if (process.env.NODE_ENV === 'production') {
+        throw error;
+      }
+
+      console.log('🔄 Starting resilient local database instance to allow offline/local development & testing...');
+    }
+  }
+
   try {
-    let mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/legal-aid-portal';
-    
-    // Parse host and port from mongoUri if possible
-    let host = '127.0.0.1';
-    let port = 27017;
-    const match = mongoUri.match(/mongodb:\/\/(.*?):(\d+)/);
-    if (match) {
-      host = match[1];
-      port = parseInt(match[2], 10);
-    }
-
-    const isLocalMongoRunning = await checkMongoRunning(port, host);
-
-    if (!isLocalMongoRunning) {
-      console.log('Local MongoDB not running on ' + host + ':' + port + '. Starting in-memory MongoDB server...');
-      mongod = await MongoMemoryServer.create();
-      mongoUri = mongod.getUri();
-      process.env.MONGO_URI = mongoUri;
-      console.log(`In-memory MongoDB server started at: ${mongoUri}`);
-    }
-
-    const conn = await mongoose.connect(mongoUri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
+    const { MongoMemoryServer } = require('mongodb-memory-server');
+    mongod = await MongoMemoryServer.create();
+    const inMemoryUri = mongod.getUri();
+    const conn = await mongoose.connect(inMemoryUri, {
+      dbName: 'court_case_db'
     });
-    console.log(`MongoDB connected: ${conn.connection.host}`);
-  } catch (error) {
-    console.error('MongoDB connection error:', error.message);
-    process.exit(1);
+    console.log(`✅ Local MongoDB connected: ${conn.connection.host} (database: ${conn.connection.name})`);
+    return conn;
+  } catch (memErr) {
+    console.error('❌ Failed to start local database fallback:', memErr.message);
+    throw memErr;
   }
 };
 
-
 module.exports = connectDB;
-
+module.exports.sanitizeUri = sanitizeUri;
+module.exports.sanitizeError = sanitizeError;

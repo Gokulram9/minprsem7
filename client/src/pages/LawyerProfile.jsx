@@ -1,10 +1,11 @@
 import { useParams, Link } from 'react-router-dom';
+import axios from '../api/axios';
 import { useState, useEffect, useRef } from 'react';
 import {
   ArrowLeft, CheckCircle2, Clock, Star, MapPin, Calendar,
   Video, Award, GraduationCap, MessageSquare, Globe,
   TrendingUp, Shield, Zap, ChevronRight, Heart, Share2,
-  Phone, Mail, Users, Briefcase
+  Phone, Mail, Users, Briefcase, Scale
 } from 'lucide-react';
 import { lawyers } from '../data/lawyersData';
 
@@ -46,7 +47,42 @@ const CircleProgress = ({ value, max = 100, color, size = 80, label, sub }) => {
 
 const LawyerProfile = () => {
   const { lawyerId } = useParams();
-  const lawyer = lawyers.find(item => item.id === lawyerId);
+  const [dbLawyer, setDbLawyer] = useState(null);
+
+  useEffect(() => {
+    const fetchLawyer = async () => {
+      try {
+        const res = await axios.get(`/lawyers/${lawyerId}`);
+        if (res.data?.data) {
+          const l = res.data.data;
+          setDbLawyer({
+            id: l._id,
+            _id: l._id,
+            name: l.fullName.startsWith('Advocate') ? l.fullName : `Advocate ${l.fullName}`,
+            bar: l.barRegistrationNumber,
+            specialization: (l.specializations && l.specializations[0]) || l.specialization || 'General Practice',
+            practiceAreas: l.practiceAreas || l.specializations || [],
+            location: l.location || `${l.district || 'Theni'}, ${l.state || 'Tamil Nadu'}`,
+            courts: l.courts || ['District Court, Theni'],
+            experience: l.experience || 8,
+            education: l.education || 'LL.B',
+            rating: l.rating || 4.8,
+            reviews: l.reviewCount || 45,
+            casesWon: l.completedCases || 40,
+            successRate: l.successRate || 90,
+            fee: l.consultationFee || 100,
+            bio: l.bio || `${l.experience || 8} years of verified practice.`,
+            image: l.profileImage || null
+          });
+        }
+      } catch (err) {
+        // Fallback to static if not found
+      }
+    };
+    if (lawyerId) fetchLawyer();
+  }, [lawyerId]);
+
+  const lawyer = dbLawyer || lawyers.find(item => item.id === lawyerId || item._id === lawyerId);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [booked, setBooked] = useState(false);
   const [videoPlaying, setVideoPlaying] = useState(false);
@@ -399,6 +435,13 @@ const LawyerProfile = () => {
                 <Zap size={13} className="text-[#8B5CF6]" />
                 Start AI Aid Consultation
               </button>
+
+              <Link
+                to={`/dashboard/messages?lawyerId=${lawyer.userId || lawyer.id}`}
+                className="w-full py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-[#B69B72] text-[var(--text-primary)] font-bold text-xs flex items-center justify-center gap-1.5 transition"
+              >
+                <MessageSquare size={13} className="text-[#B69B72]" /> Message Advocate Directly
+              </Link>
             </div>
           </div>
 
