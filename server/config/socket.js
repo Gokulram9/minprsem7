@@ -16,6 +16,8 @@ const allowedOrigins = [
   'http://127.0.0.1:5176',
   'http://127.0.0.1:3000',
   process.env.CLIENT_URL,
+  process.env.FRONTEND_URL,
+  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
 ].filter(Boolean);
 
 const initializeSocket = (httpServer) => {
@@ -24,7 +26,8 @@ const initializeSocket = (httpServer) => {
       origin: function (origin, callback) {
         if (!origin) return callback(null, true);
         const isLocalhost = /^http:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$/.test(origin);
-        if (process.env.NODE_ENV !== 'production' || allowedOrigins.includes(origin) || isLocalhost) {
+        const isVercelOrigin = /^https:\/\/.*\.vercel\.app$/i.test(origin);
+        if (process.env.NODE_ENV !== 'production' || allowedOrigins.includes(origin) || isLocalhost || isVercelOrigin) {
           return callback(null, origin);
         }
         return callback(new Error('Not allowed by CORS'));

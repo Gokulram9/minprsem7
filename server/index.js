@@ -40,6 +40,28 @@ const app = express();
 const server = http.createServer(app);
 initializeSocket(server);
 
+const buildAllowedOrigins = () => {
+  const origins = [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:5175',
+    'http://localhost:5176',
+    'http://localhost:3000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:5174',
+    'http://127.0.0.1:5175',
+    'http://127.0.0.1:5176',
+    'http://127.0.0.1:3000',
+    process.env.CLIENT_URL,
+    process.env.FRONTEND_URL,
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
+  ].filter(Boolean);
+
+  return origins;
+};
+
+const allowedOrigins = buildAllowedOrigins();
+
 // Setup Morgan request log streaming into Winston
 const morganFormat = process.env.NODE_ENV === 'production' ? 'combined' : 'dev';
 app.use(morgan(morganFormat, {
@@ -48,26 +70,13 @@ app.use(morgan(morganFormat, {
   }
 }));
 
-app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'http://localhost:5175',
-  'http://localhost:5176',
-  'http://localhost:3000',
-  'http://127.0.0.1:5173',
-  'http://127.0.0.1:5174',
-  'http://127.0.0.1:5175',
-  'http://127.0.0.1:5176',
-  'http://127.0.0.1:3000',
-  process.env.CLIENT_URL,
-].filter(Boolean);
-
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
     const isLocalhost = /^http:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$/.test(origin);
-    if (process.env.NODE_ENV !== 'production' || allowedOrigins.includes(origin) || isLocalhost) {
+    const isVercelOrigin = /^https:\/\/.*\.vercel\.app$/i.test(origin);
+    if (process.env.NODE_ENV !== 'production' || allowedOrigins.includes(origin) || isLocalhost || isVercelOrigin) {
       return callback(null, origin);
     }
     return callback(new Error('Not allowed by CORS'));
@@ -165,11 +174,29 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
+const initializeServerless = async () => {
+  if (process.env.VERCEL && process.env.VERCEL === '1') {
+    try {
+      await connectDB();
+      const User = require('./models/User');
+      const userCount = await User.countDocuments();
+      if (userCount === 0) {
+        console.log('Database is empty. Auto-seeding initial data...');
+        const seed = require('./seed');
+        await seed();
+      }
+    } catch (error) {
+      const errorMsg = error?.message || String(error || '');
+      const safeMsg = errorMsg.replace(/\/\/(.*?):(.*?)@/g, '//' + '$1:****@');
+      console.error('❌ Failed to initialize Vercel serverless database:', safeMsg);
+    }
+  }
+};
+
 const startServer = async () => {
   try {
     await connectDB();
-    
-    // Auto-seed if database is empty
+
     const User = require('./models/User');
     const userCount = await User.countDocuments();
     if (userCount === 0) {
@@ -180,8 +207,7 @@ const startServer = async () => {
 
     server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
-      
-      // Auto-schedule daily check for tomorrow's hearings
+
       const { checkTomorrowHearings } = require('./services/reminderService');
       setInterval(() => {
         console.log('⏰ Running automatic background tomorrow-hearings check...');
@@ -192,7 +218,7 @@ const startServer = async () => {
             }
           })
           .catch(err => console.error('⏰ Tomorrow check failed:', err));
-      }, 12 * 60 * 60 * 1000); // 12 hrs
+      }, 12 * 60 * 60 * 1000);
     });
   } catch (error) {
     const errorMsg = error?.message || String(error || '');
@@ -202,5 +228,14 @@ const startServer = async () => {
   }
 };
 
-startServer();
+if (require.main === module) {
+  startServer();
+}
+
+module.exports = {
+  app,
+  server,
+  initializeServerless,
+  startServer,
+};
 

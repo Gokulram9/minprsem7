@@ -28,7 +28,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
-      error.message = 'Unable to reach backend service (port 5000). Please ensure the backend server is running and reachable.';
+      error.message = 'Unable to reach the backend service. Please verify the API URL and ensure the backend is running and reachable.';
     } else if (error.response) {
       const { status, data } = error.response;
       const backendMsg = data?.message || data?.error || data?.msg;

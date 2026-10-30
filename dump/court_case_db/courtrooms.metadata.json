@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"courtId":{"$numberInt":"1"},"name":{"$numberInt":"1"}},"name":"courtId_1_name_1","background":true,"unique":true}],"uuid":"c678fe927124478ca3f730905f1c2119","collectionName":"courtrooms","type":"collection"}
