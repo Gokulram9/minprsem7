@@ -30,12 +30,13 @@ const sanitizeError = (err) => {
  * Defaults to court_case_db as requested
  */
 const connectDB = async () => {
-  const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI;
+  const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI;
+  const allowLocalFallback = process.env.ALLOW_LOCAL_DB_FALLBACK === 'true';
 
   if (mongoUri) {
     try {
       const safeUri = sanitizeUri(mongoUri);
-      console.log(`📡 Connecting to MongoDB Atlas (${safeUri})...`);
+      console.log(`📡 Connecting to MongoDB (${safeUri})...`);
 
       const conn = await mongoose.connect(mongoUri, {
         dbName: 'court_case_db',
@@ -48,8 +49,9 @@ const connectDB = async () => {
       console.warn('⚠️  MongoDB Atlas cluster unreachable (IP whitelist or network filter detected).');
       console.warn('   Atlas Error:', sanitizeError(error));
       console.warn('   👉 To connect directly to Atlas: Open MongoDB Atlas -> Network Access -> Add Current IP Address (or 0.0.0.0/0).');
-      
-      if (process.env.NODE_ENV === 'production') {
+
+      if (process.env.NODE_ENV === 'production' || !allowLocalFallback) {
+        console.error('❌ Refusing to continue because a MongoDB URI was provided but could not connect. Set ALLOW_LOCAL_DB_FALLBACK=true only for offline local testing.');
         throw error;
       }
 
@@ -57,19 +59,23 @@ const connectDB = async () => {
     }
   }
 
-  try {
-    const { MongoMemoryServer } = require('mongodb-memory-server');
-    mongod = await MongoMemoryServer.create();
-    const inMemoryUri = mongod.getUri();
-    const conn = await mongoose.connect(inMemoryUri, {
-      dbName: 'court_case_db'
-    });
-    console.log(`✅ Local MongoDB connected: ${conn.connection.host} (database: ${conn.connection.name})`);
-    return conn;
-  } catch (memErr) {
-    console.error('❌ Failed to start local database fallback:', memErr.message);
-    throw memErr;
+  if (!mongoUri || allowLocalFallback) {
+    try {
+      const { MongoMemoryServer } = require('mongodb-memory-server');
+      mongod = await MongoMemoryServer.create();
+      const inMemoryUri = mongod.getUri();
+      const conn = await mongoose.connect(inMemoryUri, {
+        dbName: 'court_case_db'
+      });
+      console.log(`✅ Local MongoDB connected: ${conn.connection.host} (database: ${conn.connection.name})`);
+      return conn;
+    } catch (memErr) {
+      console.error('❌ Failed to start local database fallback:', memErr.message);
+      throw memErr;
+    }
   }
+
+  return null;
 };
 
 module.exports = connectDB;
